@@ -1,0 +1,401 @@
+package org.mg94c18.alanford;
+
+import android.content.SharedPreferences;
+import android.content.res.AssetManager;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.AsyncTask;
+import android.os.Parcelable;
+import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentManager;
+import android.support.v4.app.FragmentStatePagerAdapter;
+import android.support.v4.view.ViewPager;
+import android.support.v4.widget.DrawerLayout;
+import android.support.v7.app.AppCompatActivity;
+import android.os.Bundle;
+import android.support.v7.widget.AppCompatImageView;
+import android.util.Log;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ImageView;
+import android.widget.ListView;
+
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.lang.ref.WeakReference;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
+    private static final String TAG = "AlanFord";
+    private static final long MAX_DOWNLOADED_IMAGES = 150;
+    private static final String SHARED_PREFS_NAME = "config";
+    private static final String EPISODE = "episode";
+    private static final String DRAWER = "drawer";
+    private static final String DRAWER_SELECTION = "drawer_selection";
+
+    ViewPager viewPager;
+    MyPagerAdapter pagerAdapter;
+    DrawerLayout drawerLayout;
+    List<String> episodes;
+    ListView drawerList;
+    List<String> titles;
+    List<String> numbers;
+    int selectedEpisode = 0;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+
+        episodes = AssetLoader.load("episodes", getAssets());
+        numbers = AssetLoader.load("numbers", getAssets());
+        titles = AssetLoader.load("titles", getAssets());
+
+        // TODO: dodati oznaku da se strana trenutno učitava (umesto da bude prazno)
+        // TODO: lint
+        // TODO: dodati state saving za Fragment
+        // TODO: posle resume, vraća se na prvi broj
+        // TODO: kad se startuje kasnije ponovo, ne vraća drawer na staro (run, force-stop, run)
+        // TODO: OutOfMemoryError (crash2.txt)
+
+        viewPager = findViewById(R.id.pager);
+
+        drawerLayout = findViewById(R.id.drawer_layout);
+        drawerList = findViewById(R.id.navigation);
+        drawerList.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, titles));
+        drawerList.setOnItemClickListener(this);
+
+        selectEpisode(findSavedEpisode(savedInstanceState));
+
+
+        if (savedInstanceState != null && savedInstanceState.containsKey(DRAWER)) {
+            Parcelable drawerState = savedInstanceState.getParcelable(DRAWER);
+            if (drawerState != null) {
+                //Log.v(TAG, "Restoring drawer instance state");
+                drawerList.onRestoreInstanceState(drawerState);
+            }
+        } else {
+            SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+            if (preferences.contains(DRAWER_SELECTION)) {
+                int drawerListPosition = preferences.getInt(DRAWER_SELECTION, 0);
+                //Log.v(TAG, "Loading drawerListPosition " + drawerListPosition);
+                drawerList.setSelection(drawerListPosition);
+            }
+        }
+    }
+
+    @Override
+    protected void onSaveInstanceState(Bundle instanceState) {
+        super.onSaveInstanceState(instanceState);
+        //Log.v(TAG, "Saving selectedEpisode=" + selectedEpisode);
+        instanceState.putInt(EPISODE, selectedEpisode);
+        instanceState.putParcelable(DRAWER, drawerList.onSaveInstanceState());
+    }
+
+    private int findSavedEpisode(Bundle savedInstanceState) {
+        final int savedEpisode;
+        if (savedInstanceState != null && savedInstanceState.containsKey(EPISODE)) {
+            //Log.v(TAG, "Loading episode from bundle");
+            savedEpisode = savedInstanceState.getInt(EPISODE);
+        } else {
+            savedEpisode = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE).getInt(EPISODE, 0);
+        }
+        //Log.v(TAG,"Returning savedEpisode=" + savedEpisode);
+        return savedEpisode;
+    }
+
+    @Override
+    public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
+        //Log.v(TAG, "onItemClick: " + position);
+        drawerList.setItemChecked(position, !drawerList.isItemChecked(position));
+        drawerLayout.closeDrawer(drawerList);
+        selectEpisode(position);
+    }
+
+    private void selectEpisode(int position) {
+        setTitle(titles.get(position));
+        pagerAdapter = new MyPagerAdapter(getSupportFragmentManager(), episodes.get(position), getAssets());
+        viewPager.setAdapter(pagerAdapter);
+        selectedEpisode = position;
+        int drawerListPosition = drawerList.getSelectedItemPosition();
+        //Log.v(TAG, "Saving episode " + selectedEpisode + " and drawer list position " + drawerListPosition);
+        getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE).edit()
+                .putInt(EPISODE, selectedEpisode)
+                .putInt(DRAWER_SELECTION, drawerListPosition)
+                .apply();
+    }
+
+    public static class MyPagerAdapter extends FragmentStatePagerAdapter {
+        List<String> links;
+        String episode;
+
+        MyPagerAdapter(FragmentManager fm, String episode, AssetManager assetManager) {
+            super(fm);
+            links = AssetLoader.load(episode, assetManager);
+            this.episode = episode;
+        }
+
+        @Override
+        public Fragment getItem(int position) {
+            Fragment f = new MyFragment();
+            Bundle args = new Bundle();
+            args.putString(MyFragment.FILENAME, episode + "_" + position);
+            args.putString(MyFragment.LINK, links.get(position));
+            if (position + 1 < links.size()) {
+                args.putString(MyFragment.NEXT_FILENAME, episode + "_" + (position + 1));
+                args.putString(MyFragment.NEXT_LINK, links.get(position + 1));
+            }
+            f.setArguments(args);
+            return f;
+        }
+
+        @Override
+        public int getCount() {
+            return links.size();
+        }
+
+        public static class MyFragment extends Fragment {
+            public static final String FILENAME = "filename";
+            public static final String LINK = "link";
+            public static final String NEXT_FILENAME = "nextFilename";
+            public static final String NEXT_LINK = "nextLink";
+            String filename;
+            String link;
+            String nextFilename;
+            String nextLink;
+
+            private static final Map<String, MyLoadTask> pendingDownloads = new HashMap<>();
+
+            private static synchronized void removePendingDownload(String link) {
+                //Log.v(TAG, "removePendingDownload(" + link + ")");
+                pendingDownloads.remove(link);
+            }
+
+            private static synchronized void markPendingDownloadAsAbandoned(String link) {
+                MyLoadTask loadTask = pendingDownloads.get(link);
+                if (loadTask != null) {
+                    loadTask.cancel(true);
+                }
+            }
+
+            @Override
+            public void onCreate(Bundle savedInstanceState) {
+                super.onCreate(savedInstanceState);
+                restore();
+            }
+
+            @Override
+            public void onDestroy() {
+                super.onDestroy();
+                //Log.v(TAG, "onDestroy(" + filename + ")");
+                markPendingDownloadAsAbandoned(link);
+            }
+
+            private void restore() {
+                Bundle args = getArguments();
+                if (args != null) {
+                    filename = args.getString(FILENAME);
+                    link = args.getString(LINK);
+                    nextFilename = args.getString(NEXT_FILENAME);
+                    nextLink = args.getString(NEXT_LINK);
+                }
+            }
+
+            @Override
+            public void onActivityCreated(Bundle savedInstanceState) {
+                super.onActivityCreated(savedInstanceState);
+                restore();
+            }
+
+            @Override
+            public void onSaveInstanceState(Bundle outState) {
+                super.onSaveInstanceState(outState);
+                if (outState == null) {
+                    return;
+                }
+                outState.putString(FILENAME, filename);
+                outState.putString(LINK, link);
+                outState.putString(NEXT_FILENAME, nextFilename);
+                outState.putString(NEXT_LINK, nextLink);
+            }
+
+            @Override
+            public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle bundle) {
+                AppCompatImageView imageView = (AppCompatImageView) inflater.inflate(R.layout.image, container, false);
+
+                //Log.v(TAG, "onCreate(" + filename + ")");
+
+                File cacheDir = getContext().getCacheDir();
+                loadPicture(new File(cacheDir, filename), link, imageView);
+
+                if (nextFilename != null) {
+                    loadPicture(new File(cacheDir, nextFilename), nextLink, null);
+                }
+
+                return imageView;
+            }
+
+            private static synchronized void loadPicture(File imageFile, String link, AppCompatImageView imageView) {
+                //Log.v(TAG, "loadPicture:(" + imageFile + " ," + link + ")");
+                MyLoadTask loadTask = pendingDownloads.get(link);
+                if (loadTask != null) {
+                    //Log.v(TAG, "Remembering new image view: " + imageFile);
+                    loadTask.setImageView(imageView);
+                } else {
+                    loadTask = new MyLoadTask(link, imageFile, imageView);
+                    pendingDownloads.put(link, loadTask);
+                    //Log.v(TAG, "Added pending download:" + link);
+                    //Log.v(TAG, "Executing download: " + loadTask);
+                    loadTask.execute();
+                }
+            }
+
+            private static Bitmap downloadAndSave(String link, File imageFile, ImageView imageView) {
+                if (imageView == null) {
+                    return null;
+                }
+
+                HttpURLConnection connection = null;
+                InputStream inputStream = null;
+                FileOutputStream fileOutputStream = null;
+                File tempFile = new File(imageFile.getAbsolutePath() + ".tmp");
+                try {
+                    //Log.v(TAG, ">> downloadAndSave(" + imageFile + ")");
+                    connection = (HttpURLConnection) new URL(link).openConnection();
+                    connection.connect();
+                    inputStream = connection.getInputStream();
+                    Bitmap bitmap = GoogleBitmapHelper.decodeSampledBitmapFromStream(
+                            inputStream,
+                            imageView.getWidth(),
+                            imageView.getHeight(),
+                            tempFile);
+
+                    fileOutputStream = new FileOutputStream(tempFile);
+                    Bitmap.CompressFormat compressFormat = link.endsWith(".png") ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG;
+                    bitmap.compress(compressFormat, 100, fileOutputStream);
+                    fileOutputStream.close();
+
+                    if (!tempFile.renameTo(imageFile)) {
+                        Log.wtf(TAG, "Can't rename " + tempFile + " to " + imageFile);
+                    }
+                    return bitmap;
+                } catch (IOException e) {
+                    if (e instanceof java.io.InterruptedIOException) {
+                        // No logs since this is considered normal
+                    } else {
+                        Log.wtf(TAG, "Can't downloadAndSave", e);
+                    }
+                    if (tempFile.exists()) {
+                        deleteFile(tempFile);
+                    }
+                    return null;
+                } finally {
+                    IOUtils.closeQuietly(inputStream);
+                    IOUtils.closeQuietly(fileOutputStream);
+                    if (connection != null) connection.disconnect();
+                    //Log.v(TAG, "<< downloadAndSave(" + imageFile + ")");
+                }
+            }
+
+            private static class MyLoadTask extends AsyncTask<Void, Void, Bitmap> {
+                File imageFile;
+                WeakReference<ImageView> imageView;
+                String link;
+
+                MyLoadTask(String link, File imageFile, ImageView imageView) {
+                    this.imageFile = imageFile;
+                    this.link = link;
+                    setImageView(imageView);
+                }
+
+                synchronized void setImageView(ImageView imageView) {
+                    this.imageView = new WeakReference<>(imageView);
+                }
+
+                @Override
+                protected Bitmap doInBackground(Void[] voids) {
+                    //Log.v(TAG, "doInBackground(" + imageFile + ")");
+                    if (imageFile.exists()) {
+                        //Log.v(TAG, "The file " + imageFile + " exists.");
+                        if (getImageView() == null || isCancelled()) {
+                            return null;
+                        } else {
+                            //Log.v(TAG, "Decoding image from " + imageFile);
+                            return BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+                        }
+                    } else {
+                        deleteOldSavedFiles(imageFile);
+                        if (isCancelled()) {
+                            return null;
+                        } else {
+                            return downloadAndSave(link, imageFile, imageView.get());
+                        }
+                    }
+                }
+
+                private static synchronized void deleteOldSavedFiles(File imageFile) {
+                    File[] files = imageFile.getParentFile().listFiles();
+                    if (files != null && files.length > MAX_DOWNLOADED_IMAGES) {
+                        //Log.v(TAG, "Found " + files.length + " cached images");
+                        Arrays.sort(files, new Comparator<File>() {
+                            @Override
+                            public int compare(File o1, File o2) {
+                                long diff = o1.lastModified() - o2.lastModified();
+                                if (diff < 0) return -1;
+                                else if (diff > 0) return 1;
+                                else return 0;
+                            }
+                        });
+
+                        for (int i = 0; i < files.length - MAX_DOWNLOADED_IMAGES; i++) {
+                            deleteFile(files[i]);
+                        }
+                    }
+                }
+
+                private synchronized ImageView getImageView() {
+                    return imageView.get();
+                }
+
+                @Override
+                protected void onPostExecute(Bitmap bitmap) {
+                    removePendingDownload(link);
+                    //Log.v(TAG, "onPostExecute(" + imageFile + ")");
+                    if (bitmap == null) {
+                        return;
+                    }
+                    ImageView view = getImageView();
+                    if (view != null) {
+                        //Log.v(TAG, "Loading into ImageView");
+                        view.setImageBitmap(bitmap);
+                    }
+                }
+
+                @Override
+                protected void onCancelled(Bitmap b) {
+                    //Log.v(TAG, "onCancelled(" + imageFile + ")");
+                    removePendingDownload(link);
+                }
+            }
+        }
+    }
+
+    private static void deleteFile(File file) {
+        if (file.delete()) {
+            //Log.v(TAG, "Deleted " + file);
+        } else {
+            Log.wtf(TAG, "Can't delete " + file);
+        }
+    }
+}

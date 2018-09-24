@@ -1,0 +1,2 @@
+#!/bin/sh
+for d in 48 72 96 114 144 192 512; do /Applications/Inkscape.app/Contents/Resources/bin/inkscape -e /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/main/Icon$d.png -w $d -h $d /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/main/Icon.svg; done

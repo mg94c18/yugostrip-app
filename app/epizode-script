@@ -1,0 +1,2 @@
+cat epizode.csv  | sed -E 's/^([0-9a-b]+),/\1#/'  | sed -e 's/"//g'  | awk -F \# '{print $2}' | gzip - > ~/AndroidStudioProjects/ViewPagerTest/app/src/main/assets/titles
+cat epizode.csv  | sed -E 's/^([0-9a-b]+),/\1#/'  | sed -e 's/"//g'  | awk -F \# '{print $1}' | gzip - > ~/AndroidStudioProjects/ViewPagerTest/app/src/main/assets/numbers
