@@ -1,0 +1,38 @@
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: FATAL EXCEPTION: AsyncTask #12
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: Process: org.mg94c18.alanford, PID: 6151
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: java.lang.RuntimeException: An error occurred while executing doInBackground()
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at android.os.AsyncTask$3.done(AsyncTask.java:318)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at java.util.concurrent.FutureTask.finishCompletion(FutureTask.java:354)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at java.util.concurrent.FutureTask.setException(FutureTask.java:223)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at java.util.concurrent.FutureTask.run(FutureTask.java:242)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at android.os.AsyncTask$SerialExecutor$1.run(AsyncTask.java:243)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1133)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:607)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at java.lang.Thread.run(Thread.java:761)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: Caused by: java.lang.ArithmeticException: divide by zero
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at org.mg94c18.alanford.GoogleBitmapHelper.calculateInSampleSize(GoogleBitmapHelper.java:25)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at org.mg94c18.alanford.GoogleBitmapHelper.decodeSampledBitmapFromStream(GoogleBitmapHelper.java:57)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at org.mg94c18.alanford.MainActivity$MyPagerAdapter$MyFragment.downloadAndSave(MainActivity.java:319)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at org.mg94c18.alanford.MainActivity$MyPagerAdapter$MyFragment.access$100(MainActivity.java:209)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at org.mg94c18.alanford.MainActivity$MyPagerAdapter$MyFragment$MyLoadTask.doInBackground(MainActivity.java:383)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at org.mg94c18.alanford.MainActivity$MyPagerAdapter$MyFragment$MyLoadTask.doInBackground(MainActivity.java:352)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at android.os.AsyncTask$2.call(AsyncTask.java:304)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	at java.util.concurrent.FutureTask.run(FutureTask.java:237)
+09-28 02:12:18.334  6151  6313 E AndroidRuntime: 	... 4 more
+09-28 02:12:18.335  1623  1633 W ActivityManager:   Force finishing activity org.mg94c18.alanford/.MainActivity
+09-28 02:12:18.369  1337  1866 D gralloc_ranchu: gralloc_alloc: Creating ashmem region of size 2691072
+09-28 02:12:18.373  1623  1772 D         : HostConnection::get() New Host Connection established 0x870c4140, tid 1772
+09-28 02:12:18.376  1337  1337 E EGL_emulation: tid 1337: eglCreateSyncKHR(1901): error 0x3004 (EGL_BAD_ATTRIBUTE)
+09-28 02:12:19.393  1337  1349 W SurfaceFlinger: Timed out waiting for hw vsync; faking it
+09-28 02:12:35.484  1337  1347 W SurfaceFlinger: Timed out waiting for hw vsync; faking it
+09-28 02:12:35.540  1623  1636 W ActivityManager: Launch timeout has expired, giving up wake lock!
+09-28 02:12:35.791  2081  2225 D EGL_emulation: eglMakeCurrent: 0x9eb05360: ver 2 0 (tinfo 0x9eb03650)
+09-28 02:12:35.796  1623  1660 I OpenGLRenderer: Initialized EGL, version 1.4
+09-28 02:12:35.796  1623  1660 D OpenGLRenderer: Swap behavior 1
+09-28 02:12:35.797  1623  1660 W OpenGLRenderer: Failed to choose config with EGL_SWAP_BEHAVIOR_PRESERVED, retrying without...
+09-28 02:12:35.797  1623  1660 D OpenGLRenderer: Swap behavior 0
+09-28 02:12:35.798  1623  1660 D EGL_emulation: eglCreateContext: 0x8f5a6be0: maj 2 min 0 rcv 2
+09-28 02:12:35.800  6151  6169 D EGL_emulation: eglMakeCurrent: 0x9eb05120: ver 2 0 (tinfo 0x9eb035e0)
+09-28 02:12:35.804  1623  1660 D EGL_emulation: eglMakeCurrent: 0x8f5a6be0: ver 2 0 (tinfo 0x8f199340)
+09-28 02:12:35.814  1623  1660 D EGL_emulation: eglMakeCurrent: 0x8f5a6be0: ver 2 0 (tinfo 0x8f199340)
+09-28 02:12:36.225  1623  1643 I WindowManager: Destroying surface Surface(name=org.mg94c18.alanford/org.mg94c18.alanford.MainActivity) called by com.android.server.wm.WindowStateAnimator.destroySurface:2016 com.android.server.wm.WindowStateAnimator.destroySurfaceLocked:882 com.android.server.wm.WindowState.removeLocked:1456 com.android.server.wm.WindowManagerService.removeWindowInnerLocked:2484 com.android.server.wm.AppWindowToken.destroySurfaces:365 com.android.server.wm.WindowStateAnimator.finishExit:565 com.android.server.wm.WindowStateAnimator.stepAnimationLocked:491 com.android.server.wm.WindowAnimator.updateWindowsLocked:303 

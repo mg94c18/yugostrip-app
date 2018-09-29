@@ -1,11 +1,15 @@
 package org.mg94c18.alanford;
 
+import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.graphics.Typeface;
 import android.os.AsyncTask;
 import android.os.Parcelable;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
@@ -20,8 +24,10 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.CheckedTextView;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.TextView;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -53,6 +59,34 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     List<String> numbers;
     int selectedEpisode = 0;
 
+    private class MyArrayAdapter extends ArrayAdapter<String> {
+        public MyArrayAdapter(@NonNull Context context, int resource) {
+            super(context, resource, titles);
+        }
+
+        @Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+            String title = titles.get(position);
+            if (convertView == null) {
+                convertView = getLayoutInflater().inflate(android.R.layout.simple_list_item_1, parent, false);
+            }
+            TextView textView = (TextView) convertView;
+            textView.setText(title);
+            if (position == selectedEpisode) {
+                textView.setTypeface(null, Typeface.BOLD);
+            } else {
+                textView.setTypeface(null, Typeface.NORMAL);
+            }
+
+            return textView;
+        }
+
+        @Override
+        public int getCount() {
+            return titles.size();
+        }
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -65,51 +99,57 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         // TODO: dodati oznaku da se strana trenutno učitava (umesto da bude prazno)
         // TODO: lint
         // TODO: dodati state saving za Fragment
-        // TODO: posle resume, vraća se na prvi broj
-        // TODO: kad se startuje kasnije ponovo, ne vraća drawer na staro (run, force-stop, run)
-        // TODO: OutOfMemoryError (crash2.txt)
+        // TODO: da se vrati na istu stranu gde je stao
+        // TODO: Slika: Alo, Bing?  Kako bratac?  Propao praveci lose Android apps?
+        //           Cuj, imam Android app sa prvih 425 epizoda... Cijena?  Prava sitnica!
+        // TODO: crash-divide.log
+        // TODO: setCurrentItem(10); works but is blank
 
         viewPager = findViewById(R.id.pager);
 
         drawerLayout = findViewById(R.id.drawer_layout);
         drawerList = findViewById(R.id.navigation);
-        drawerList.setAdapter(new ArrayAdapter<>(this, android.R.layout.simple_list_item_1, titles));
+        drawerList.setAdapter(new MyArrayAdapter(this, android.R.layout.simple_list_item_1));
         drawerList.setOnItemClickListener(this);
 
         selectEpisode(findSavedEpisode(savedInstanceState));
 
-
         if (savedInstanceState != null && savedInstanceState.containsKey(DRAWER)) {
             Parcelable drawerState = savedInstanceState.getParcelable(DRAWER);
             if (drawerState != null) {
-                //Log.v(TAG, "Restoring drawer instance state");
+                Log.v(TAG, "Restoring drawer instance state");
                 drawerList.onRestoreInstanceState(drawerState);
+            } else {
+                Log.e(TAG, "Can't restore drawer instance state");
             }
         } else {
             SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
             if (preferences.contains(DRAWER_SELECTION)) {
-                int drawerListPosition = preferences.getInt(DRAWER_SELECTION, 0);
-                //Log.v(TAG, "Loading drawerListPosition " + drawerListPosition);
+                int drawerListPosition = selectedEpisode; //preferences.getInt(DRAWER_SELECTION, 0);
+                //Log.v(TAG, "Loading drawer list position " + drawerListPosition);
                 drawerList.setSelection(drawerListPosition);
+            } else {
+                Log.e(TAG, "Can't load drawer list position");
             }
         }
     }
 
     @Override
     protected void onSaveInstanceState(Bundle instanceState) {
-        super.onSaveInstanceState(instanceState);
-        //Log.v(TAG, "Saving selectedEpisode=" + selectedEpisode);
+        Log.v(TAG, "Saving selectedEpisode=" + selectedEpisode);
         instanceState.putInt(EPISODE, selectedEpisode);
         instanceState.putParcelable(DRAWER, drawerList.onSaveInstanceState());
+        super.onSaveInstanceState(instanceState);
     }
 
     private int findSavedEpisode(Bundle savedInstanceState) {
         final int savedEpisode;
         if (savedInstanceState != null && savedInstanceState.containsKey(EPISODE)) {
-            //Log.v(TAG, "Loading episode from bundle");
             savedEpisode = savedInstanceState.getInt(EPISODE);
+            Log.v(TAG, "Loaded episode from bundle: " + savedEpisode);
         } else {
             savedEpisode = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE).getInt(EPISODE, 0);
+            Log.v(TAG, "Loaded episode from shared prefs: " + savedEpisode);
         }
         //Log.v(TAG,"Returning savedEpisode=" + savedEpisode);
         return savedEpisode;
@@ -125,7 +165,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     private void selectEpisode(int position) {
         setTitle(titles.get(position));
-        pagerAdapter = new MyPagerAdapter(getSupportFragmentManager(), episodes.get(position), getAssets());
+        pagerAdapter = new MyPagerAdapter(this, getSupportFragmentManager(), episodes.get(position), getAssets());
         viewPager.setAdapter(pagerAdapter);
         selectedEpisode = position;
         int drawerListPosition = drawerList.getSelectedItemPosition();
@@ -139,11 +179,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     public static class MyPagerAdapter extends FragmentStatePagerAdapter {
         List<String> links;
         String episode;
+        Context context;
 
-        MyPagerAdapter(FragmentManager fm, String episode, AssetManager assetManager) {
+        MyPagerAdapter(Context context, FragmentManager fm, String episode, AssetManager assetManager) {
             super(fm);
             links = AssetLoader.load(episode, assetManager);
             this.episode = episode;
+            this.context = context;
         }
 
         @Override
