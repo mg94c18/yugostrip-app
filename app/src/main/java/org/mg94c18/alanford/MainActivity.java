@@ -27,6 +27,7 @@ import android.widget.ArrayAdapter;
 import android.widget.CheckedTextView;
 import android.widget.ImageView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import java.io.File;
@@ -58,6 +59,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     List<String> titles;
     List<String> numbers;
     int selectedEpisode = 0;
+
+    private static void LOG_V(String s) {
+        if (BuildConfig.DEBUG) {
+            Log.v(TAG, s);
+        }
+    }
 
     private class MyArrayAdapter extends ArrayAdapter<String> {
         public MyArrayAdapter(@NonNull Context context, int resource) {
@@ -96,7 +103,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         numbers = AssetLoader.load("numbers", getAssets());
         titles = AssetLoader.load("titles", getAssets());
 
-        // TODO: dodati oznaku da se strana trenutno učitava (umesto da bude prazno)
+        // TODO: dodati oznaku da se strana trenutno učitava (umesto da bude prazno) (workspace/DisplayingBitmaps ima primer)
         // TODO: lint
         // TODO: dodati state saving za Fragment
         // TODO: da se vrati na istu stranu gde je stao
@@ -104,6 +111,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         //           Cuj, imam Android app sa prvih 425 epizoda... Cijena?  Prava sitnica!
         // TODO: crash-divide.log
         // TODO: setCurrentItem(10); works but is blank
+        // TODO: RecyclingImageView razmotriti (iz DisplayingBitmaps)
+        // TODO: proveriti na API 15 da FragmentStatePagerAdapter ucitava unapred
 
         viewPager = findViewById(R.id.pager);
 
@@ -126,7 +135,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
             if (preferences.contains(DRAWER_SELECTION)) {
                 int drawerListPosition = selectedEpisode; //preferences.getInt(DRAWER_SELECTION, 0);
-                //Log.v(TAG, "Loading drawer list position " + drawerListPosition);
+                LOG_V("Loading drawer list position " + drawerListPosition);
                 drawerList.setSelection(drawerListPosition);
             } else {
                 Log.e(TAG, "Can't load drawer list position");
@@ -134,9 +143,29 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
+//        private static final String CURRENT_PAGE = "current_page";
+//        final int loadedPage;
+//        if (savedInstanceState != null && savedInstanceState.containsKey(CURRENT_PAGE)) {
+//            loadedPage = savedInstanceState.getInt(CURRENT_PAGE);
+//                  LOG_V("Restored current page from bundle: " + loadedPage);
+//        } else {
+//            final SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+//            if (preferences.contains(CURRENT_PAGE)) {
+//                loadedPage = preferences.getInt(CURRENT_PAGE, 0);
+//            } else {
+//                  LOG_V("Can't restore current page");
+//                loadedPage = 0;
+//            }
+//        }
+//        currentPage = loadedPage;
+//        onSaveInstanceState: instanceState.putInt(CURRENT_PAGE, viewPager.getCurrentItem());
+//        // TODO: ovo je bolje da ide u onPageSelected
+//        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+//        preferences.edit().putInt(CURRENT_PAGE, position).apply();
+
     @Override
     protected void onSaveInstanceState(Bundle instanceState) {
-        Log.v(TAG, "Saving selectedEpisode=" + selectedEpisode);
+        LOG_V("Saving selectedEpisode=" + selectedEpisode);
         instanceState.putInt(EPISODE, selectedEpisode);
         instanceState.putParcelable(DRAWER, drawerList.onSaveInstanceState());
         super.onSaveInstanceState(instanceState);
@@ -146,18 +175,18 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         final int savedEpisode;
         if (savedInstanceState != null && savedInstanceState.containsKey(EPISODE)) {
             savedEpisode = savedInstanceState.getInt(EPISODE);
-            Log.v(TAG, "Loaded episode from bundle: " + savedEpisode);
+            LOG_V("Loaded episode from bundle: " + savedEpisode);
         } else {
             savedEpisode = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE).getInt(EPISODE, 0);
-            Log.v(TAG, "Loaded episode from shared prefs: " + savedEpisode);
+            LOG_V("Loaded episode from shared prefs: " + savedEpisode);
         }
-        //Log.v(TAG,"Returning savedEpisode=" + savedEpisode);
+        LOG_V("Returning savedEpisode=" + savedEpisode);
         return savedEpisode;
     }
 
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-        //Log.v(TAG, "onItemClick: " + position);
+        LOG_V("onItemClick: " + position);
         drawerList.setItemChecked(position, !drawerList.isItemChecked(position));
         drawerLayout.closeDrawer(drawerList);
         selectEpisode(position);
@@ -169,7 +198,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         viewPager.setAdapter(pagerAdapter);
         selectedEpisode = position;
         int drawerListPosition = drawerList.getSelectedItemPosition();
-        //Log.v(TAG, "Saving episode " + selectedEpisode + " and drawer list position " + drawerListPosition);
+        LOG_V("Saving episode " + selectedEpisode + " and drawer list position " + drawerListPosition);
         getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE).edit()
                 .putInt(EPISODE, selectedEpisode)
                 .putInt(DRAWER_SELECTION, drawerListPosition)
@@ -220,7 +249,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             private static final Map<String, MyLoadTask> pendingDownloads = new HashMap<>();
 
             private static synchronized void removePendingDownload(String link) {
-                //Log.v(TAG, "removePendingDownload(" + link + ")");
+                LOG_V("removePendingDownload(" + link + ")");
                 pendingDownloads.remove(link);
             }
 
@@ -240,7 +269,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             @Override
             public void onDestroy() {
                 super.onDestroy();
-                //Log.v(TAG, "onDestroy(" + filename + ")");
+                LOG_V("onDestroy(" + filename + ")");
                 markPendingDownloadAsAbandoned(link);
             }
 
@@ -274,46 +303,45 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
             @Override
             public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle bundle) {
-                AppCompatImageView imageView = (AppCompatImageView) inflater.inflate(R.layout.image, container, false);
+                View pageView = inflater.inflate(R.layout.image, container, false);
+                AppCompatImageView imageView = pageView.findViewById(R.id.imageView);
+                imageView.setTag(pageView.findViewById(R.id.progressBar));
 
-                //Log.v(TAG, "onCreate(" + filename + ")");
+                LOG_V("onCreate(" + filename + ")");
 
                 File cacheDir = getContext().getCacheDir();
                 loadPicture(new File(cacheDir, filename), link, imageView);
 
-                if (nextFilename != null) {
-                    loadPicture(new File(cacheDir, nextFilename), nextLink, null);
-                }
+                // FragmentStatePagerAdapter does this automatically :)
+//                if (nextFilename != null) {
+//                    loadPicture(new File(cacheDir, nextFilename), nextLink, null);
+//                }
 
-                return imageView;
+                return pageView;
             }
 
             private static synchronized void loadPicture(File imageFile, String link, AppCompatImageView imageView) {
-                //Log.v(TAG, "loadPicture:(" + imageFile + " ," + link + ")");
+                LOG_V("loadPicture:(" + imageFile + " ," + link + ")");
                 MyLoadTask loadTask = pendingDownloads.get(link);
                 if (loadTask != null) {
-                    //Log.v(TAG, "Remembering new image view: " + imageFile);
+                    LOG_V("Remembering new image view: " + imageFile);
                     loadTask.setImageView(imageView);
                 } else {
                     loadTask = new MyLoadTask(link, imageFile, imageView);
                     pendingDownloads.put(link, loadTask);
-                    //Log.v(TAG, "Added pending download:" + link);
-                    //Log.v(TAG, "Executing download: " + loadTask);
+                    LOG_V("Added pending download:" + link);
+                    LOG_V("Executing download: " + loadTask);
                     loadTask.execute();
                 }
             }
 
             private static Bitmap downloadAndSave(String link, File imageFile, ImageView imageView) {
-                if (imageView == null) {
-                    return null;
-                }
-
                 HttpURLConnection connection = null;
                 InputStream inputStream = null;
                 FileOutputStream fileOutputStream = null;
                 File tempFile = new File(imageFile.getAbsolutePath() + ".tmp");
                 try {
-                    //Log.v(TAG, ">> downloadAndSave(" + imageFile + ")");
+                    LOG_V(">> downloadAndSave(" + imageFile + ")");
                     connection = (HttpURLConnection) new URL(link).openConnection();
                     connection.connect();
                     inputStream = connection.getInputStream();
@@ -346,7 +374,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     IOUtils.closeQuietly(inputStream);
                     IOUtils.closeQuietly(fileOutputStream);
                     if (connection != null) connection.disconnect();
-                    //Log.v(TAG, "<< downloadAndSave(" + imageFile + ")");
+                    LOG_V("<< downloadAndSave(" + imageFile + ")");
                 }
             }
 
@@ -367,13 +395,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 @Override
                 protected Bitmap doInBackground(Void[] voids) {
-                    //Log.v(TAG, "doInBackground(" + imageFile + ")");
+                    LOG_V("doInBackground(" + imageFile + ")");
                     if (imageFile.exists()) {
-                        //Log.v(TAG, "The file " + imageFile + " exists.");
+                        LOG_V("The file " + imageFile + " exists.");
                         if (getImageView() == null || isCancelled()) {
                             return null;
                         } else {
-                            //Log.v(TAG, "Decoding image from " + imageFile);
+                            LOG_V("Decoding image from " + imageFile);
                             return BitmapFactory.decodeFile(imageFile.getAbsolutePath());
                         }
                     } else {
@@ -381,6 +409,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         if (isCancelled()) {
                             return null;
                         } else {
+                            ImageView destinationView = imageView.get();
+                            if (destinationView == null) {
+                                 return null;
+                            }
                             return downloadAndSave(link, imageFile, imageView.get());
                         }
                     }
@@ -389,7 +421,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 private static synchronized void deleteOldSavedFiles(File imageFile) {
                     File[] files = imageFile.getParentFile().listFiles();
                     if (files != null && files.length > MAX_DOWNLOADED_IMAGES) {
-                        //Log.v(TAG, "Found " + files.length + " cached images");
+                        LOG_V("Found " + files.length + " cached images");
                         Arrays.sort(files, new Comparator<File>() {
                             @Override
                             public int compare(File o1, File o2) {
@@ -412,22 +444,29 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 @Override
                 protected void onPostExecute(Bitmap bitmap) {
-                    removePendingDownload(link);
-                    //Log.v(TAG, "onPostExecute(" + imageFile + ")");
-                    if (bitmap == null) {
-                        return;
-                    }
                     ImageView view = getImageView();
-                    if (view != null) {
-                        //Log.v(TAG, "Loading into ImageView");
-                        view.setImageBitmap(bitmap);
+                    ProgressBar progressBar = view != null ? (ProgressBar) view.getTag() : null;
+                    try {
+                        removePendingDownload(link);
+                        LOG_V("onPostExecute(" + imageFile + ")");
+                        if (bitmap == null) {
+                            return;
+                        }
+                        if (view != null) {
+                            LOG_V("Loading into ImageView");
+                            view.setImageBitmap(bitmap);
+                        }
+                    } finally {
+                        if (progressBar != null) {
+                            progressBar.setVisibility(View.GONE);
+                        }
                     }
                 }
 
                 @Override
                 protected void onCancelled(Bitmap b) {
-                    //Log.v(TAG, "onCancelled(" + imageFile + ")");
-                    removePendingDownload(link);
+                    LOG_V("onCancelled(" + imageFile + ")");
+                    onPostExecute(null);
                 }
             }
         }
@@ -435,7 +474,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     private static void deleteFile(File file) {
         if (file.delete()) {
-            //Log.v(TAG, "Deleted " + file);
+            LOG_V("Deleted " + file);
         } else {
             Log.wtf(TAG, "Can't delete " + file);
         }
