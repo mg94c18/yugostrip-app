@@ -15,6 +15,10 @@ public class GoogleBitmapHelper {
         final int width = options.outWidth;
         int inSampleSize = 1;
 
+        if (reqWidth == 0 || reqHeight == 0) {
+            return inSampleSize;
+        }
+
         if (height > reqHeight || width > reqWidth) {
 
             final int halfHeight = height / 2;

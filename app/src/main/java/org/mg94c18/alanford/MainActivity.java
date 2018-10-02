@@ -335,7 +335,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 }
             }
 
-            private static Bitmap downloadAndSave(String link, File imageFile, ImageView imageView) {
+            private static Bitmap downloadAndSave(String link, File imageFile, int width, int height) {
                 HttpURLConnection connection = null;
                 InputStream inputStream = null;
                 FileOutputStream fileOutputStream = null;
@@ -347,8 +347,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     inputStream = connection.getInputStream();
                     Bitmap bitmap = GoogleBitmapHelper.decodeSampledBitmapFromStream(
                             inputStream,
-                            imageView.getWidth(),
-                            imageView.getHeight(),
+                            width,
+                            height,
                             tempFile);
 
                     fileOutputStream = new FileOutputStream(tempFile);
@@ -413,7 +413,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                             if (destinationView == null) {
                                  return null;
                             }
-                            return downloadAndSave(link, imageFile, imageView.get());
+                            return downloadAndSave(link, imageFile, destinationView.getWidth(), destinationView.getHeight());
                         }
                     }
                 }
