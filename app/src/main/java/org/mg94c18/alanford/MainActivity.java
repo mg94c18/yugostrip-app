@@ -103,17 +103,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         numbers = AssetLoader.load("numbers", getAssets());
         titles = AssetLoader.load("titles", getAssets());
 
-        // TODO: dodati oznaku da se strana trenutno učitava (umesto da bude prazno) (workspace/DisplayingBitmaps ima primer)
-        // TODO: lint
-        // TODO: dodati state saving za Fragment
-        // TODO: da se vrati na istu stranu gde je stao
-        // TODO: Slika: Alo, Bing?  Kako bratac?  Propao praveci lose Android apps?
-        //           Cuj, imam Android app sa prvih 425 epizoda... Cijena?  Prava sitnica!
-        // TODO: crash-divide.log
-        // TODO: setCurrentItem(10); works but is blank
-        // TODO: RecyclingImageView razmotriti (iz DisplayingBitmaps)
-        // TODO: proveriti na API 15 da FragmentStatePagerAdapter ucitava unapred
-
         viewPager = findViewById(R.id.pager);
 
         drawerLayout = findViewById(R.id.drawer_layout);
