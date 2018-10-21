@@ -1,0 +1,2 @@
+#!/bin/sh
+for d in 1024; do /Applications/Inkscape.app/Contents/Resources/bin/inkscape -e /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/main/InternetProblem$d.png -w $d -h $d /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/main/InternetProblem.svg; done

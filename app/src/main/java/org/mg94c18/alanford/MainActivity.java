@@ -142,6 +142,39 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        // Inflate the menu items for use in the action bar
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate(R.menu.glavni_meni, menu);
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Handle presses on the action bar items
+        switch (item.getItemId()) {
+            case R.id.action_email:
+                Intent emailIntent = new Intent(Intent.ACTION_SENDTO);
+                emailIntent.setData(Uri.parse("mailto:"));
+                String[] emails = {CONTACT_EMAIL};
+                emailIntent.putExtra(Intent.EXTRA_EMAIL, emails);
+                emailIntent.putExtra(Intent.EXTRA_SUBJECT, getResources().getString(R.string.app_name) + " App");
+                if (emailIntent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(emailIntent);
+                }
+                return true;
+            /*case R.id.action_download:
+                if (!internetAvailable(this)) {
+                    Toast.makeText(this, "Internet Problem", Toast.LENGTH_SHORT).show();
+                    return true;
+                }
+                return true;*/
+            default:
+                return super.onOptionsItemSelected(item);
+        }
+    }
+
 //        private static final String CURRENT_PAGE = "current_page";
 //        final int loadedPage;
 //        if (savedInstanceState != null && savedInstanceState.containsKey(CURRENT_PAGE)) {
@@ -168,6 +201,25 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         instanceState.putInt(EPISODE, selectedEpisode);
         instanceState.putParcelable(DRAWER, drawerList.onSaveInstanceState());
         super.onSaveInstanceState(instanceState);
+    }
+
+    private static boolean internetAvailable(Context context) {
+        ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(CONNECTIVITY_SERVICE);
+        if (connectivityManager == null) {
+            LOG_V("Can't get connectivityManager");
+            return false;
+        }
+        LOG_V("Got connectivityManager");
+
+        NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+        if (networkInfo == null) {
+            LOG_V("getActiveNetworkInfo returned null");
+            return false;
+        }
+
+        boolean connected = networkInfo.isConnected();
+        LOG_V("internetAvailable: " + connected);
+        return connected;
     }
 
     private int findSavedEpisode(Bundle savedInstanceState) {
@@ -311,9 +363,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 File cacheDir = getContext().getCacheDir();
                 File pictureFile = new File(cacheDir, filename);
-                if (!internetAvailable() && !pictureFile.exists()) {
+                if (!internetAvailable(getContext()) && !pictureFile.exists()) {
                     //Toast.makeText(getContext(), "Internet Problem", Toast.LENGTH_SHORT).show();
-                    imageView.setImageResource(R.drawable.ic_launcher);
+                    imageView.setImageResource(R.drawable.internet_problem);
                     return pageView;
                 }
 
@@ -324,25 +376,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 //                }
 
                 return pageView;
-            }
-
-            boolean internetAvailable() {
-                ConnectivityManager connectivityManager = (ConnectivityManager) getContext().getSystemService(CONNECTIVITY_SERVICE);
-                if (connectivityManager == null) {
-                    LOG_V("Can't get connectivityManager");
-                    return false;
-                }
-                LOG_V("Got connectivityManager");
-
-                NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
-                if (networkInfo == null) {
-                    LOG_V("getActiveNetworkInfo returned null");
-                    return false;
-                }
-
-                boolean connected = networkInfo.isConnected();
-                LOG_V("internetAvailable: " + connected);
-                return connected;
             }
 
             private static synchronized void loadPicture(File imageFile, String link, AppCompatImageView imageView) {

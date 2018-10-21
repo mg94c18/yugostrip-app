@@ -15,7 +15,7 @@
    id="svg2"
    version="1.1"
    inkscape:version="0.91 r13725"
-   sodipodi:docname="Icon.svg">
+   sodipodi:docname="InternetProblem.svg">
   <defs
      id="defs4">
     <linearGradient
@@ -80,8 +80,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="22.627417"
-     inkscape:cx="19.222615"
-     inkscape:cy="19.924517"
+     inkscape:cx="9.7699998"
+     inkscape:cy="15.270344"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -117,7 +117,7 @@
      transform="translate(0,-1024.3622)"
      style="display:inline">
     <rect
-       style="fill:#ff0000;fill-opacity:1;fill-rule:evenodd;stroke:none"
+       style="fill:#ffffff;fill-opacity:1;fill-rule:evenodd;stroke:none"
        id="rect2987"
        width="28.121321"
        height="27.909903"
@@ -149,32 +149,20 @@
          y="1029.3622" /></text>
     <text
        xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:10px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="5.2244883"
-       y="1031.241"
+       style="font-style:normal;font-weight:normal;font-size:10px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;"
+       x="2.6499641"
+       y="1036.6881"
        id="text3394"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3396"
-         x="5.2244883"
-         y="1031.241"
-         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';fill:#ffffff;fill-opacity:1">alan</tspan><tspan
+         x="2.6499641"
+         y="1036.6881"
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';fill:#000000;fill-opacity:1;">internet</tspan><tspan
          sodipodi:role="line"
-         x="5.2244883"
-         y="1040.616"
-         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1"
-         id="tspan4167">ford</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:10px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="14.117372"
-       y="1049.1412"
-       id="text4171"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         id="tspan4173"
-         x="14.117372"
-         y="1049.1412"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle">425</tspan></text>
+         x="2.6499641"
+         y="1042.9381"
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';text-align:start;text-anchor:start;fill:#000000;fill-opacity:1;"
+         id="tspan4167">problem</tspan></text>
   </g>
 </svg>
