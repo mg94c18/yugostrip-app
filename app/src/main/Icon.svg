@@ -80,8 +80,8 @@
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
      inkscape:zoom="22.627417"
-     inkscape:cx="17.197961"
-     inkscape:cy="12.2813"
+     inkscape:cx="9.1638224"
+     inkscape:cy="11.085682"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -120,9 +120,9 @@
        style="fill:#ff0000;fill-opacity:1;fill-rule:evenodd;stroke:none"
        id="rect2987"
        width="28.121321"
-       height="12"
+       height="27.909903"
        x="-0.016466001"
-       y="1032.3622"
+       y="1024.4514"
        rx="0"
        ry="0" />
     <text
@@ -135,7 +135,7 @@
          sodipodi:role="line"
          id="tspan3388"
          x="4"
-         y="1030.3622"></tspan></text>
+         y="1030.3622" /></text>
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
@@ -149,20 +149,32 @@
          y="1029.3622" /></text>
     <text
        xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:10px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1;"
-       x="1.1360996"
-       y="1037.2738"
+       style="font-style:normal;font-weight:normal;font-size:10px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="5.2244883"
+       y="1031.241"
        id="text3394"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
          id="tspan3396"
-         x="1.1360996"
-         y="1037.2738"
-         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';fill:#ffffff;fill-opacity:1;">alan ford</tspan><tspan
+         x="5.2244883"
+         y="1031.241"
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';fill:#ffffff;fill-opacity:1">alan</tspan><tspan
          sodipodi:role="line"
-         x="1.1360996"
-         y="1043.5238"
-         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1;"
-         id="tspan3398">  online</tspan></text>
+         x="5.2244883"
+         y="1040.616"
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1"
+         id="tspan4167">ford</tspan></text>
+    <text
+       xml:space="preserve"
+       style="font-style:normal;font-weight:normal;font-size:10px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+       x="14.117372"
+       y="1049.1412"
+       id="text4171"
+       sodipodi:linespacing="125%"><tspan
+         sodipodi:role="line"
+         id="tspan4173"
+         x="14.117372"
+         y="1049.1412"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle">425</tspan></text>
   </g>
 </svg>

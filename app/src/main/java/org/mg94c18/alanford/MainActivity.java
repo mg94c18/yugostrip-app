@@ -1,11 +1,15 @@
 package org.mg94c18.alanford;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
@@ -20,6 +24,9 @@ import android.os.Bundle;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.Log;
 import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
@@ -29,6 +36,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -50,6 +58,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static final String EPISODE = "episode";
     private static final String DRAWER = "drawer";
     private static final String DRAWER_SELECTION = "drawer_selection";
+    private static final String CONTACT_EMAIL = "mg94c18@tesla.rcub.bg.ac.rs";
 
     ViewPager viewPager;
     MyPagerAdapter pagerAdapter;
@@ -104,6 +113,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         titles = AssetLoader.load("titles", getAssets());
 
         viewPager = findViewById(R.id.pager);
+        //viewPager.setSystemUiVisibility(View.STATUS_BAR_HIDDEN);
 
         drawerLayout = findViewById(R.id.drawer_layout);
         drawerList = findViewById(R.id.navigation);
@@ -294,19 +304,45 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle bundle) {
                 View pageView = inflater.inflate(R.layout.image, container, false);
                 AppCompatImageView imageView = pageView.findViewById(R.id.imageView);
-                imageView.setTag(pageView.findViewById(R.id.progressBar));
+                ProgressBar progressBar = (ProgressBar) pageView.findViewById(R.id.progressBar);
+                imageView.setTag(progressBar);
 
                 LOG_V("onCreate(" + filename + ")");
 
                 File cacheDir = getContext().getCacheDir();
-                loadPicture(new File(cacheDir, filename), link, imageView);
+                File pictureFile = new File(cacheDir, filename);
+                if (!internetAvailable() && !pictureFile.exists()) {
+                    //Toast.makeText(getContext(), "Internet Problem", Toast.LENGTH_SHORT).show();
+                    imageView.setImageResource(R.drawable.ic_launcher);
+                    return pageView;
+                }
 
+                loadPicture(pictureFile, link, imageView);
                 // FragmentStatePagerAdapter does this automatically :)
 //                if (nextFilename != null) {
 //                    loadPicture(new File(cacheDir, nextFilename), nextLink, null);
 //                }
 
                 return pageView;
+            }
+
+            boolean internetAvailable() {
+                ConnectivityManager connectivityManager = (ConnectivityManager) getContext().getSystemService(CONNECTIVITY_SERVICE);
+                if (connectivityManager == null) {
+                    LOG_V("Can't get connectivityManager");
+                    return false;
+                }
+                LOG_V("Got connectivityManager");
+
+                NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
+                if (networkInfo == null) {
+                    LOG_V("getActiveNetworkInfo returned null");
+                    return false;
+                }
+
+                boolean connected = networkInfo.isConnected();
+                LOG_V("internetAvailable: " + connected);
+                return connected;
             }
 
             private static synchronized void loadPicture(File imageFile, String link, AppCompatImageView imageView) {
