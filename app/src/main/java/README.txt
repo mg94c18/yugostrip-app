@@ -10,3 +10,5 @@ TODO:
 * RecyclingImageView razmotriti (iz DisplayingBitmaps)
 * proveriti na API 15 da FragmentStatePagerAdapter ucitava unapred
 * Kad nema interneta i postaviti sliku Broj 1 lupa kompjuter koji nešto prijavljuje da ne radi
+
+* "the content resembles the content of another mobile application": pitati Leia@Amazon, Melody@Amazon, ali najverovatnije je artwork (copy/paste)

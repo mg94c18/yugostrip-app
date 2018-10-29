@@ -1,6 +1,9 @@
 package org.mg94c18.alanford;
 
+import android.app.Activity;
+import android.app.ProgressDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.AssetManager;
@@ -29,6 +32,7 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.CheckedTextView;
@@ -68,6 +72,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     List<String> titles;
     List<String> numbers;
     int selectedEpisode = 0;
+    EpisodeDownloadTask downloadTask;
 
     private static void LOG_V(String s) {
         if (BuildConfig.DEBUG) {
@@ -106,6 +111,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        downloadTask = null;
         setContentView(R.layout.activity_main);
 
         episodes = AssetLoader.load("episodes", getAssets());
@@ -143,6 +149,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
 
     @Override
+    public void onStop() {
+        super.onStop();
+        if (downloadTask != null) {
+            downloadTask.cancel(true);
+            downloadTask = null;
+        }
+    }
+
+    @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu items for use in the action bar
         MenuInflater inflater = getMenuInflater();
@@ -164,12 +179,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     startActivity(emailIntent);
                 }
                 return true;
-            /*case R.id.action_download:
+            case R.id.action_download:
                 if (!internetAvailable(this)) {
                     Toast.makeText(this, "Internet Problem", Toast.LENGTH_SHORT).show();
                     return true;
                 }
-                return true;*/
+
+                downloadTask = new EpisodeDownloadTask(this, pagerAdapter.links, titles.get(selectedEpisode));
+                downloadTask.execute();
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -535,6 +553,91 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             LOG_V("Deleted " + file);
         } else {
             Log.wtf(TAG, "Can't delete " + file);
+        }
+    }
+
+    private static class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> implements DialogInterface.OnCancelListener {
+        private Activity activity;
+        private ProgressDialog progressDialog;
+        private List<String> links;
+        private String title;
+
+        public EpisodeDownloadTask(Activity activity, List<String> links, String title) {
+            this.activity = activity;
+            this.links = links;
+            this.title = title;
+        }
+
+        private void keepScreenOn(boolean on) {
+            if (on) {
+                activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            } else {
+                activity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+            }
+        }
+
+        @Override
+        public void onPreExecute() {
+            LOG_V("onPreExecute");
+            progressDialog = new ProgressDialog(activity);
+            progressDialog.setTitle(title);
+            progressDialog.setCancelable(true);
+            progressDialog.setCanceledOnTouchOutside(false);
+            progressDialog.setMax(links.size());
+            progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
+            progressDialog.setProgress(0);
+            progressDialog.setOnCancelListener(this);
+            progressDialog.show();
+            keepScreenOn(true);
+        }
+
+        @Override
+        public void onCancel(DialogInterface dialogInterface) {
+            LOG_V("onCancel");
+            this.cancel(true);
+            closeProgressDialog();
+        }
+
+        @Override
+        public void onCancelled(Boolean result) {
+            LOG_V("onCancelled");
+            closeProgressDialog();
+        }
+
+        @Override
+        protected void onProgressUpdate(Integer... progress) {
+            progressDialog.setProgress(progress[0] + 1);
+        }
+
+        @Override
+        protected Boolean doInBackground(Void... voids) {
+            LOG_V("doInBackground");
+            for (int i = 0; i < links.size() && !isCancelled(); i++) {
+                LOG_V("publishProgress(" + i + ")");
+                publishProgress(i);
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ie) {
+                    Log.e(TAG, "Insomnia", ie);
+                }
+            }
+            return Boolean.TRUE;
+        }
+
+        @Override
+        protected void onPostExecute(Boolean result) {
+            LOG_V("onPostExecute");
+            keepScreenOn(false);
+            closeProgressDialog();
+        }
+
+        private void closeProgressDialog() {
+            LOG_V("closeProgressDialog");
+            if (progressDialog != null) {
+                progressDialog.cancel();
+                progressDialog.dismiss();
+                progressDialog = null;
+            }
         }
     }
 }

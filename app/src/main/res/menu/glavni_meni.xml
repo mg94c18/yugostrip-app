@@ -4,7 +4,7 @@
     <item android:id="@+id/action_email"
         android:title="Email"
         app:showAsAction="never" />
-    <!--item android:id="@+id/action_download"
+    <item android:id="@+id/action_download"
         android:title="Download"
-        app:showAsAction="never" /-->
+        app:showAsAction="never" />
 </menu>
