@@ -56,7 +56,7 @@ import java.util.List;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
-    private static final String TAG = "AlanFord";
+    public static final String TAG = "AlanFord";
     private static final long MAX_DOWNLOADED_IMAGES = 150;
     private static final String SHARED_PREFS_NAME = "config";
     private static final String EPISODE = "episode";
@@ -74,7 +74,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     int selectedEpisode = 0;
     EpisodeDownloadTask downloadTask;
 
-    private static void LOG_V(String s) {
+    public static void LOG_V(String s) {
         if (BuildConfig.DEBUG) {
             Log.v(TAG, s);
         }
@@ -185,7 +185,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     return true;
                 }
 
-                downloadTask = new EpisodeDownloadTask(this, pagerAdapter.links, titles.get(selectedEpisode));
+                downloadTask = new EpisodeDownloadTask(this, pagerAdapter.episode, pagerAdapter.links, titles.get(selectedEpisode));
                 downloadTask.execute();
                 return true;
             default:
@@ -411,49 +411,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 }
             }
 
-            private static Bitmap downloadAndSave(String link, File imageFile, int width, int height) {
-                HttpURLConnection connection = null;
-                InputStream inputStream = null;
-                FileOutputStream fileOutputStream = null;
-                File tempFile = new File(imageFile.getAbsolutePath() + ".tmp");
-                try {
-                    LOG_V(">> downloadAndSave(" + imageFile + ")");
-                    connection = (HttpURLConnection) new URL(link).openConnection();
-                    connection.connect();
-                    inputStream = connection.getInputStream();
-                    Bitmap bitmap = GoogleBitmapHelper.decodeSampledBitmapFromStream(
-                            inputStream,
-                            width,
-                            height,
-                            tempFile);
-
-                    fileOutputStream = new FileOutputStream(tempFile);
-                    Bitmap.CompressFormat compressFormat = link.endsWith(".png") ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG;
-                    bitmap.compress(compressFormat, 100, fileOutputStream);
-                    fileOutputStream.close();
-
-                    if (!tempFile.renameTo(imageFile)) {
-                        Log.wtf(TAG, "Can't rename " + tempFile + " to " + imageFile);
-                    }
-                    return bitmap;
-                } catch (IOException e) {
-                    if (e instanceof java.io.InterruptedIOException) {
-                        // No logs since this is considered normal
-                    } else {
-                        Log.wtf(TAG, "Can't downloadAndSave", e);
-                    }
-                    if (tempFile.exists()) {
-                        deleteFile(tempFile);
-                    }
-                    return null;
-                } finally {
-                    IOUtils.closeQuietly(inputStream);
-                    IOUtils.closeQuietly(fileOutputStream);
-                    if (connection != null) connection.disconnect();
-                    LOG_V("<< downloadAndSave(" + imageFile + ")");
-                }
-            }
-
             private static class MyLoadTask extends AsyncTask<Void, Void, Bitmap> {
                 File imageFile;
                 WeakReference<ImageView> imageView;
@@ -472,25 +429,29 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 @Override
                 protected Bitmap doInBackground(Void[] voids) {
                     LOG_V("doInBackground(" + imageFile + ")");
+                    Bitmap savedBitmap = null;
                     if (imageFile.exists()) {
                         LOG_V("The file " + imageFile + " exists.");
                         if (getImageView() == null || isCancelled()) {
                             return null;
                         } else {
                             LOG_V("Decoding image from " + imageFile);
-                            return BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+                            savedBitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
                         }
+                    }
+                    if (savedBitmap != null) {
+                        return savedBitmap;
+                    }
+
+                    deleteOldSavedFiles(imageFile);
+                    if (isCancelled()) {
+                        return null;
                     } else {
-                        deleteOldSavedFiles(imageFile);
-                        if (isCancelled()) {
-                            return null;
-                        } else {
-                            ImageView destinationView = imageView.get();
-                            if (destinationView == null) {
-                                 return null;
-                            }
-                            return downloadAndSave(link, imageFile, destinationView.getWidth(), destinationView.getHeight());
+                        ImageView destinationView = imageView.get();
+                        if (destinationView == null) {
+                             return null;
                         }
+                        return DownloadAndSave.downloadAndSave(link, imageFile, destinationView.getWidth(), destinationView.getHeight());
                     }
                 }
 
@@ -548,7 +509,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
-    private static void deleteFile(File file) {
+    public static void deleteFile(File file) {
         if (file.delete()) {
             LOG_V("Deleted " + file);
         } else {
@@ -561,11 +522,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         private ProgressDialog progressDialog;
         private List<String> links;
         private String title;
+        private String episodeId;
 
-        public EpisodeDownloadTask(Activity activity, List<String> links, String title) {
+        public EpisodeDownloadTask(Activity activity, String episodeId, List<String> links, String title) {
             this.activity = activity;
             this.links = links;
             this.title = title;
+            this.episodeId = episodeId;
         }
 
         private void keepScreenOn(boolean on) {
@@ -606,7 +569,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         @Override
         protected void onProgressUpdate(Integer... progress) {
-            progressDialog.setProgress(progress[0] + 1);
+            progressDialog.incrementProgressBy(1);
         }
 
         @Override
@@ -615,11 +578,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             for (int i = 0; i < links.size() && !isCancelled(); i++) {
                 LOG_V("publishProgress(" + i + ")");
                 publishProgress(i);
-                try {
-                    Thread.sleep(1000);
-                } catch (InterruptedException ie) {
-                    Log.e(TAG, "Insomnia", ie);
+
+                String filename = episodeId + "_" + i;
+                File file = new File(activity.getCacheDir(), filename);
+                if (file.exists()) {
+                    LOG_V(filename + " already exists");
+                    continue;
                 }
+                if (new File(activity.getCacheDir(), filename + DownloadAndSave.TMP_SUFFIX).exists()) {
+                    LOG_V(filename + " is already being downloaded");
+                    continue;
+                }
+                LOG_V("Downloading " + filename);
+                DownloadAndSave.downloadAndSave(links.get(i), file, 0, 0);
             }
             return Boolean.TRUE;
         }
