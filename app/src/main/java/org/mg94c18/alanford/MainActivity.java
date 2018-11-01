@@ -62,6 +62,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static final String EPISODE = "episode";
     private static final String DRAWER = "drawer";
     private static final String DRAWER_SELECTION = "drawer_selection";
+    private static final String CURRENT_PAGE = "current_page";
     private static final String CONTACT_EMAIL = "mg94c18@tesla.rcub.bg.ac.rs";
 
     ViewPager viewPager;
@@ -73,6 +74,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     List<String> numbers;
     int selectedEpisode = 0;
     EpisodeDownloadTask downloadTask;
+    int loadedCurrentPage;
 
     public static void LOG_V(String s) {
         if (BuildConfig.DEBUG) {
@@ -146,6 +148,26 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 Log.e(TAG, "Can't load drawer list position");
             }
         }
+
+        loadedCurrentPage = loadSavedCurrentPage(savedInstanceState);
+    }
+
+    int loadSavedCurrentPage(Bundle savedInstanceState) {
+        final int loadedCurrentPage;
+        if (savedInstanceState != null && savedInstanceState.containsKey(CURRENT_PAGE)) {
+            loadedCurrentPage = savedInstanceState.getInt(CURRENT_PAGE);
+            LOG_V("Restored current page from bundle: " + loadedCurrentPage);
+        } else {
+            final SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+            if (preferences.contains(CURRENT_PAGE)) {
+                loadedCurrentPage = preferences.getInt(CURRENT_PAGE, 0);
+                LOG_V("Restored current page from shared prefs: " + loadedCurrentPage);
+            } else {
+                LOG_V("Can't restore current page");
+                loadedCurrentPage = 0;
+            }
+        }
+        return loadedCurrentPage;
     }
 
     @Override
@@ -154,6 +176,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if (downloadTask != null) {
             downloadTask.cancel(true);
             downloadTask = null;
+        }
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+        if (viewPager.getCurrentItem() == 0 && loadedCurrentPage != 0) {
+            LOG_V("setCurrentItem(" + loadedCurrentPage + ")");
+            viewPager.setCurrentItem(loadedCurrentPage);
         }
     }
 
@@ -193,31 +224,17 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
-//        private static final String CURRENT_PAGE = "current_page";
-//        final int loadedPage;
-//        if (savedInstanceState != null && savedInstanceState.containsKey(CURRENT_PAGE)) {
-//            loadedPage = savedInstanceState.getInt(CURRENT_PAGE);
-//                  LOG_V("Restored current page from bundle: " + loadedPage);
-//        } else {
-//            final SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
-//            if (preferences.contains(CURRENT_PAGE)) {
-//                loadedPage = preferences.getInt(CURRENT_PAGE, 0);
-//            } else {
-//                  LOG_V("Can't restore current page");
-//                loadedPage = 0;
-//            }
-//        }
-//        currentPage = loadedPage;
-//        onSaveInstanceState: instanceState.putInt(CURRENT_PAGE, viewPager.getCurrentItem());
-//        // TODO: ovo je bolje da ide u onPageSelected
-//        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
-//        preferences.edit().putInt(CURRENT_PAGE, position).apply();
-
     @Override
     protected void onSaveInstanceState(Bundle instanceState) {
         LOG_V("Saving selectedEpisode=" + selectedEpisode);
         instanceState.putInt(EPISODE, selectedEpisode);
         instanceState.putParcelable(DRAWER, drawerList.onSaveInstanceState());
+
+        int currentPage = viewPager.getCurrentItem();
+        instanceState.putInt(CURRENT_PAGE, currentPage);
+        SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+        preferences.edit().putInt(CURRENT_PAGE, currentPage).apply();
+
         super.onSaveInstanceState(instanceState);
     }
 
