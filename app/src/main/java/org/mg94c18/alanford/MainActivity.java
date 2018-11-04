@@ -338,8 +338,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
             private static final Map<String, MyLoadTask> pendingDownloads = new HashMap<>();
 
-            private static synchronized void removePendingDownload(String link) {
-                LOG_V("removePendingDownload(" + link + ")");
+            private static synchronized void removePendingDownload(String link, File imageFile) {
+                LOG_V("removePendingDownload(" + imageFile + ")");
                 pendingDownloads.remove(link);
             }
 
@@ -418,7 +418,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             }
 
             private static synchronized void loadPicture(File imageFile, String link, AppCompatImageView imageView) {
-                LOG_V("loadPicture:(" + imageFile + " ," + link + ")");
+                LOG_V("loadPicture:(" + imageFile + ")");
                 MyLoadTask loadTask = pendingDownloads.get(link);
                 if (loadTask != null) {
                     LOG_V("Remembering new image view: " + imageFile);
@@ -426,8 +426,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 } else {
                     loadTask = new MyLoadTask(link, imageFile, imageView);
                     pendingDownloads.put(link, loadTask);
-                    LOG_V("Added pending download:" + link);
-                    LOG_V("Executing download: " + loadTask);
+                    LOG_V("Added pending download:" + imageFile);
+                    LOG_V("Executing download: " + imageFile);
                     loadTask.execute();
                 }
             }
@@ -505,13 +505,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     ImageView view = getImageView();
                     ProgressBar progressBar = view != null ? (ProgressBar) view.getTag() : null;
                     try {
-                        removePendingDownload(link);
                         LOG_V("onPostExecute(" + imageFile + ")");
+                        removePendingDownload(link, imageFile);
                         if (bitmap == null) {
                             return;
                         }
                         if (view != null) {
-                            LOG_V("Loading into ImageView");
+                            LOG_V("Loading into ImageView(" + imageFile + ")");
                             view.setImageBitmap(bitmap);
                         }
                     } finally {

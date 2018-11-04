@@ -48,7 +48,7 @@ public class DownloadAndSave {
             if (e instanceof java.io.InterruptedIOException) {
                 // No logs since this is considered normal
             } else {
-                Log.wtf(TAG, "Can't downloadAndSave", e);
+                Log.wtf(TAG, "Can't downloadAndSave(" + imageFile + ")", e);
             }
             if (tempFile.exists()) {
                 MainActivity.deleteFile(tempFile);
