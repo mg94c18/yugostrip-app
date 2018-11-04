@@ -26,6 +26,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -209,6 +210,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 if (emailIntent.resolveActivity(getPackageManager()) != null) {
                     startActivity(emailIntent);
                 }
+                return true;
+            case R.id.action_episodes:
+                drawerLayout.openDrawer(Gravity.LEFT);
                 return true;
             case R.id.action_download:
                 if (!internetAvailable(this)) {
