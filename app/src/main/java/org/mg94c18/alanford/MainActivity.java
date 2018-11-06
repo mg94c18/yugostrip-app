@@ -75,7 +75,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     List<String> numbers;
     int selectedEpisode = 0;
     EpisodeDownloadTask downloadTask;
-    int loadedCurrentPage;
 
     public static void LOG_V(String s) {
         if (BuildConfig.DEBUG) {
@@ -150,7 +149,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             }
         }
 
-        loadedCurrentPage = loadSavedCurrentPage(savedInstanceState);
+        int loadedCurrentPage = loadSavedCurrentPage(savedInstanceState);
+        if (viewPager.getCurrentItem() == 0 && loadedCurrentPage != 0) {
+            LOG_V("setCurrentItem(" + loadedCurrentPage + ")");
+            viewPager.setCurrentItem(loadedCurrentPage);
+        }
     }
 
     int loadSavedCurrentPage(Bundle savedInstanceState) {
@@ -177,15 +180,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if (downloadTask != null) {
             downloadTask.cancel(true);
             downloadTask = null;
-        }
-    }
-
-    @Override
-    public void onResume() {
-        super.onResume();
-        if (viewPager.getCurrentItem() == 0 && loadedCurrentPage != 0) {
-            LOG_V("setCurrentItem(" + loadedCurrentPage + ")");
-            viewPager.setCurrentItem(loadedCurrentPage);
         }
     }
 
