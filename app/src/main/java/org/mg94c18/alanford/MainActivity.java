@@ -213,9 +213,17 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     Toast.makeText(this, "Internet Problem", Toast.LENGTH_SHORT).show();
                     return true;
                 }
-
                 downloadTask = new EpisodeDownloadTask(this, pagerAdapter.episode, pagerAdapter.links, titles.get(selectedEpisode));
                 downloadTask.execute();
+                return true;
+            case R.id.action_review:
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(Uri.parse(
+                        "https://play.google.com/store/apps/details?id=" + getPackageName()));
+                intent.setPackage("com.android.vending");
+                if (intent.resolveActivity(getPackageManager()) != null) {
+                    startActivity(intent);
+                }
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
