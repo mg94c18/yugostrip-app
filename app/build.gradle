@@ -6,8 +6,8 @@ android {
         applicationId 'org.mg94c18.alanford'
         minSdkVersion 15
         targetSdkVersion 26
-        versionCode 5
-        versionName "1.5"
+        versionCode 6
+        versionName "1.6"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
