@@ -7,4 +7,3 @@ TODO:
     * brisati kad je taj storage pun ili kad su epizode skinute pre više od nedelju dana ??
     * u oba slučaja: posle snimanja treba da ostane više od ??
 * Kad jednom nema interneta, zašto pauzira učitavanje dobre strane?
-* Vraća se na stari broj strane čak i ako je u pitanju druga epizoda!

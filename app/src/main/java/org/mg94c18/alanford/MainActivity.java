@@ -26,6 +26,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.AppCompatImageView;
 import android.util.Log;
+import android.util.Pair;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -63,6 +64,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static final String EPISODE = "episode";
     private static final String DRAWER = "drawer";
     private static final String DRAWER_SELECTION = "drawer_selection";
+    private static final String CURRENT_PAGE_EPISODE = "current_page_episode";
     private static final String CURRENT_PAGE = "current_page";
     private static final String CONTACT_EMAIL = "mg94c18@tesla.rcub.bg.ac.rs";
 
@@ -149,29 +151,27 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             }
         }
 
-        int loadedCurrentPage = loadSavedCurrentPage(savedInstanceState);
-        if (viewPager.getCurrentItem() == 0 && loadedCurrentPage != 0) {
-            LOG_V("setCurrentItem(" + loadedCurrentPage + ")");
-            viewPager.setCurrentItem(loadedCurrentPage);
+        Pair<Integer, Integer> currentPageAndEpizode = loadSavedCurrentPage(savedInstanceState);
+        if (viewPager.getCurrentItem() == 0 && currentPageAndEpizode != null
+                && currentPageAndEpizode.first != -1
+                && currentPageAndEpizode.second != -1
+                && currentPageAndEpizode.second == selectedEpisode) {
+            LOG_V("setCurrentItem(" + currentPageAndEpizode.first + ")");
+            viewPager.setCurrentItem(currentPageAndEpizode.first);
         }
     }
 
-    int loadSavedCurrentPage(Bundle savedInstanceState) {
-        final int loadedCurrentPage;
-        if (savedInstanceState != null && savedInstanceState.containsKey(CURRENT_PAGE)) {
-            loadedCurrentPage = savedInstanceState.getInt(CURRENT_PAGE);
-            LOG_V("Restored current page from bundle: " + loadedCurrentPage);
-        } else {
-            final SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
-            if (preferences.contains(CURRENT_PAGE)) {
-                loadedCurrentPage = preferences.getInt(CURRENT_PAGE, 0);
-                LOG_V("Restored current page from shared prefs: " + loadedCurrentPage);
-            } else {
-                LOG_V("Can't restore current page");
-                loadedCurrentPage = 0;
-            }
+    Pair<Integer, Integer> loadSavedCurrentPage(Bundle savedInstanceState) {
+        if (savedInstanceState != null
+                && savedInstanceState.containsKey(CURRENT_PAGE)
+                && savedInstanceState.containsKey(CURRENT_PAGE_EPISODE)) {
+            return Pair.create(savedInstanceState.getInt(CURRENT_PAGE), savedInstanceState.getInt(CURRENT_PAGE_EPISODE));
         }
-        return loadedCurrentPage;
+        final SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+        if (preferences.contains(CURRENT_PAGE) && preferences.contains(CURRENT_PAGE_EPISODE)) {
+            return Pair.create(preferences.getInt(CURRENT_PAGE,-1), preferences.getInt(CURRENT_PAGE_EPISODE, -1));
+        }
+        return null;
     }
 
     @Override
@@ -238,8 +238,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         int currentPage = viewPager.getCurrentItem();
         instanceState.putInt(CURRENT_PAGE, currentPage);
+        instanceState.putInt(CURRENT_PAGE_EPISODE, selectedEpisode);
         SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
-        preferences.edit().putInt(CURRENT_PAGE, currentPage).apply();
+        preferences.edit().putInt(CURRENT_PAGE, currentPage).putInt(CURRENT_PAGE_EPISODE, selectedEpisode).apply();
 
         super.onSaveInstanceState(instanceState);
     }
