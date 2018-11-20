@@ -141,14 +141,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 Log.e(TAG, "Can't restore drawer instance state");
             }
         } else {
-            SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
-            if (preferences.contains(DRAWER_SELECTION)) {
-                int drawerListPosition = selectedEpisode; //preferences.getInt(DRAWER_SELECTION, 0);
-                LOG_V("Loading drawer list position " + drawerListPosition);
-                drawerList.setSelection(drawerListPosition);
-            } else {
-                Log.e(TAG, "Can't load drawer list position");
-            }
+            drawerList.setSelection(selectedEpisode);
         }
 
         Pair<Integer, Integer> currentPageAndEpizode = loadSavedCurrentPage(savedInstanceState);
