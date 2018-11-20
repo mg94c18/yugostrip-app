@@ -2,6 +2,7 @@ package org.mg94c18.alanford;
 
 import android.app.Activity;
 import android.app.ProgressDialog;
+import android.app.SearchManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -16,7 +17,6 @@ import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
@@ -37,20 +37,16 @@ import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
-import android.widget.CheckedTextView;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
+import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.lang.ref.WeakReference;
-import java.net.HttpURLConnection;
-import java.net.URL;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -67,6 +63,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static final String CURRENT_PAGE_EPISODE = "current_page_episode";
     private static final String CURRENT_PAGE = "current_page";
     private static final String CONTACT_EMAIL = "mg94c18@tesla.rcub.bg.ac.rs";
+    private static final String MY_ACTION_VIEW = "org.mg94c18.alanford.VIEW";
 
     ViewPager viewPager;
     MyPagerAdapter pagerAdapter;
@@ -84,6 +81,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
+    public static void LOG_D(String s) {
+        if (BuildConfig.DEBUG) {
+            Log.d(TAG, s);
+        }
+    }
+
     private class MyArrayAdapter extends ArrayAdapter<String> {
         public MyArrayAdapter(@NonNull Context context, int resource) {
             super(context, resource, titles);
@@ -91,12 +94,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
-            String title = titles.get(position);
             if (convertView == null) {
                 convertView = getLayoutInflater().inflate(android.R.layout.simple_list_item_1, parent, false);
             }
             TextView textView = (TextView) convertView;
-            textView.setText(title);
+            textView.setText(numbers.get(position) + ". " + titles.get(position));
             if (position == selectedEpisode) {
                 textView.setTypeface(null, Typeface.BOLD);
             } else {
@@ -113,7 +115,41 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
 
     @Override
+    protected void onNewIntent(Intent intent) {
+        handleNewIntent(intent);
+    }
+
+    private boolean handleNewIntent(Intent intent) {
+        if (intent == null) {
+            return false;
+        }
+
+        if (!MY_ACTION_VIEW.equals(intent.getAction())) {
+            return false;
+        }
+
+        String epizodeStr = intent.getStringExtra(SearchManager.EXTRA_DATA_KEY);
+        if (epizodeStr == null) {
+            return false;
+        }
+
+        int episode;
+        try {
+            episode = Integer.parseInt(epizodeStr);
+        } catch (NumberFormatException nfe) {
+            Log.wtf(TAG, "Can't convert the episode ID", nfe);
+            return false;
+        }
+
+        selectEpisode(episode);
+        drawerList.setSelection(episode);
+
+        return true;
+    }
+
+    @Override
     protected void onCreate(Bundle savedInstanceState) {
+        LOG_V("onCreate");
         super.onCreate(savedInstanceState);
         downloadTask = null;
         setContentView(R.layout.activity_main);
@@ -122,25 +158,30 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         numbers = AssetLoader.load("numbers", getAssets());
         titles = AssetLoader.load("titles", getAssets());
 
+        SearchProvider.TITLES = titles;
+        SearchProvider.NUMBERS = numbers;
+
         viewPager = findViewById(R.id.pager);
-        //viewPager.setSystemUiVisibility(View.STATUS_BAR_HIDDEN);
 
         drawerLayout = findViewById(R.id.drawer_layout);
         drawerList = findViewById(R.id.navigation);
         drawerList.setAdapter(new MyArrayAdapter(this, android.R.layout.simple_list_item_1));
         drawerList.setOnItemClickListener(this);
 
-        selectEpisode(findSavedEpisode(savedInstanceState));
+        if (!handleNewIntent(getIntent())) {
+            selectEpisode(findSavedEpisode(savedInstanceState));
+        }
 
         if (savedInstanceState != null && savedInstanceState.containsKey(DRAWER)) {
             Parcelable drawerState = savedInstanceState.getParcelable(DRAWER);
             if (drawerState != null) {
-                Log.v(TAG, "Restoring drawer instance state");
+                LOG_D("Restoring drawer instance state");
                 drawerList.onRestoreInstanceState(drawerState);
             } else {
                 Log.e(TAG, "Can't restore drawer instance state");
             }
         } else {
+            LOG_D("savedInstanceState doesn't contain drawer state");
             drawerList.setSelection(selectedEpisode);
         }
 
@@ -149,8 +190,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 && currentPageAndEpizode.first != -1
                 && currentPageAndEpizode.second != -1
                 && currentPageAndEpizode.second == selectedEpisode) {
-            LOG_V("setCurrentItem(" + currentPageAndEpizode.first + ")");
+            LOG_D("setCurrentItem(" + currentPageAndEpizode.first + ")");
             viewPager.setCurrentItem(currentPageAndEpizode.first);
+        } else {
+            LOG_D("Can't load current page: "
+                    + "getCurrentItem=" + viewPager.getCurrentItem()
+                    + "currentPageAndEpizode=" + currentPageAndEpizode
+                    + "selectedEpisode=" + selectedEpisode);
         }
     }
 
@@ -169,11 +215,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     public void onStop() {
+        LOG_V("onStop");
         super.onStop();
         if (downloadTask != null) {
             downloadTask.cancel(true);
             downloadTask = null;
         }
+        saveCurrentPage(viewPager.getCurrentItem());
     }
 
     @Override
@@ -181,6 +229,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         // Inflate the menu items for use in the action bar
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.glavni_meni, menu);
+
+        // Associate searchable configuration with the SearchView
+        SearchManager searchManager =
+                (SearchManager) getSystemService(Context.SEARCH_SERVICE);
+        SearchView searchView =
+                (SearchView) menu.findItem(R.id.search).getActionView();
+        searchView.setSearchableInfo(
+                searchManager.getSearchableInfo(getComponentName()));
+
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -218,6 +275,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     startActivity(intent);
                 }
                 return true;
+
+            case R.id.search:
+                onSearchRequested();
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -225,17 +286,22 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     protected void onSaveInstanceState(Bundle instanceState) {
-        LOG_V("Saving selectedEpisode=" + selectedEpisode);
+        LOG_V("onSaveInstanceState");
+        LOG_D("Saving selectedEpisode=" + selectedEpisode);
         instanceState.putInt(EPISODE, selectedEpisode);
         instanceState.putParcelable(DRAWER, drawerList.onSaveInstanceState());
 
         int currentPage = viewPager.getCurrentItem();
         instanceState.putInt(CURRENT_PAGE, currentPage);
         instanceState.putInt(CURRENT_PAGE_EPISODE, selectedEpisode);
+        saveCurrentPage(currentPage);
+        super.onSaveInstanceState(instanceState);
+    }
+
+    private void saveCurrentPage(int currentPage) {
+        LOG_D("Saving currentPage=" + currentPage);
         SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
         preferences.edit().putInt(CURRENT_PAGE, currentPage).putInt(CURRENT_PAGE_EPISODE, selectedEpisode).apply();
-
-        super.onSaveInstanceState(instanceState);
     }
 
     private static boolean internetAvailable(Context context) {

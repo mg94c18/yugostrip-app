@@ -14,4 +14,8 @@
     <item android:id="@+id/action_review"
         app:showAsAction="never"
         android:title="Vidi u Google Play" />
+    <item android:id="@+id/search"
+        android:title="Nađi epizodu..."
+        app:showAsAction="never"
+        app:actionViewClass="android.widget.SearchView" />
 </menu>
