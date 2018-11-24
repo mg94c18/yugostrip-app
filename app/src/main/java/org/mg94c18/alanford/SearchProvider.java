@@ -18,10 +18,12 @@ import java.util.Set;
 public class SearchProvider extends ContentProvider {
     public static List<String> TITLES;
     public static List<String> NUMBERS;
+    public static List<String> DATES;
 
     private static String[] MANDATORY_COLUMNS = {
             BaseColumns._ID,
             SearchManager.SUGGEST_COLUMN_TEXT_1,
+            SearchManager.SUGGEST_COLUMN_TEXT_2,
             SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA
     };
 
@@ -58,6 +60,8 @@ public class SearchProvider extends ContentProvider {
             boolean addThis = false;
             if (NUMBERS.get(i).contains(query)) {
                 addThis = true;
+            } else if (DATES.get(i).contains(uri.getLastPathSegment())) {
+                addThis = true;
             } else {
                 for (String q : querySet) {
                     if (titlesLowercase.get(i).contains(q)) {
@@ -70,7 +74,8 @@ public class SearchProvider extends ContentProvider {
             if (addThis) {
                 MatrixCursor.RowBuilder builder = cursor.newRow();
                 builder.add(i); // BaseColumns._ID
-                builder.add(NUMBERS.get(i) + ". " + TITLES.get(i)); // SearchManager.SUGGEST_COLUMN_TEXT_1
+                builder.add(TITLES.get(i)); // SearchManager.SUGGEST_COLUMN_TEXT_1
+                builder.add("broj " + NUMBERS.get(i) + ", " + DATES.get(i)); // SearchManager.SUGGEST_COLUMN_TEXT_2
                 builder.add(Integer.toString(i)); // SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA
             }
         }

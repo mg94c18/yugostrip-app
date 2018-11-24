@@ -68,10 +68,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     ViewPager viewPager;
     MyPagerAdapter pagerAdapter;
     DrawerLayout drawerLayout;
-    List<String> episodes;
     ListView drawerList;
     List<String> titles;
     List<String> numbers;
+    List<String> dates;
     int selectedEpisode = 0;
     EpisodeDownloadTask downloadTask;
 
@@ -154,12 +154,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         downloadTask = null;
         setContentView(R.layout.activity_main);
 
-        episodes = AssetLoader.load("episodes", getAssets());
+        dates = AssetLoader.load("dates", getAssets());
         numbers = AssetLoader.load("numbers", getAssets());
         titles = AssetLoader.load("titles", getAssets());
 
         SearchProvider.TITLES = titles;
         SearchProvider.NUMBERS = numbers;
+        SearchProvider.DATES = dates;
 
         viewPager = findViewById(R.id.pager);
 
@@ -346,7 +347,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     private void selectEpisode(int position) {
         setTitle(titles.get(position));
-        pagerAdapter = new MyPagerAdapter(this, getSupportFragmentManager(), episodes.get(position), getAssets());
+        pagerAdapter = new MyPagerAdapter(this, getSupportFragmentManager(), numbers.get(position), getAssets());
         viewPager.setAdapter(pagerAdapter);
         selectedEpisode = position;
         int drawerListPosition = drawerList.getSelectedItemPosition();
