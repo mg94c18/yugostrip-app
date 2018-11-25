@@ -15,6 +15,8 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Environment;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
 import android.support.v4.app.Fragment;
@@ -239,6 +241,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         searchView.setSearchableInfo(
                 searchManager.getSearchableInfo(getComponentName()));
 
+        menu.findItem(R.id.action_download).setVisible("KFTT".equals(Build.MODEL));
+
         return super.onCreateOptionsMenu(menu);
     }
 
@@ -260,8 +264,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 drawerLayout.openDrawer(Gravity.LEFT);
                 return true;
             case R.id.action_download:
+                final String errorMessage;
+                // TODO: use Environment.getExternalStorageState();
                 if (!internetAvailable(this)) {
-                    Toast.makeText(this, "Internet Problem", Toast.LENGTH_SHORT).show();
+                    errorMessage = "Internet Problem";
+//                } else if (!externalStorageHelper.mExternalStorageAvailable) {
+//                    errorMessage = "Memorijska kartica nije ubačena";
+//                } else if (!externalStorageHelper.mExternalStorageWriteable) {
+//                    errorMessage = "Memorijska kartica je read-only";
+                } else {
+                    errorMessage = null;
+                }
+                if (errorMessage != null) {
+                    Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
                     return true;
                 }
                 downloadTask = new EpisodeDownloadTask(this, pagerAdapter.episode, pagerAdapter.links, titles.get(selectedEpisode));
@@ -374,12 +389,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         public Fragment getItem(int position) {
             Fragment f = new MyFragment();
             Bundle args = new Bundle();
-            args.putString(MyFragment.FILENAME, episode + "_" + position);
+            args.putString(MyFragment.FILENAME, DownloadAndSave.fileNameFromLink(links.get(position), episode, position));
             args.putString(MyFragment.LINK, links.get(position));
-            if (position + 1 < links.size()) {
-                args.putString(MyFragment.NEXT_FILENAME, episode + "_" + (position + 1));
-                args.putString(MyFragment.NEXT_LINK, links.get(position + 1));
-            }
             f.setArguments(args);
             return f;
         }
@@ -392,26 +403,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         public static class MyFragment extends Fragment {
             public static final String FILENAME = "filename";
             public static final String LINK = "link";
-            public static final String NEXT_FILENAME = "nextFilename";
-            public static final String NEXT_LINK = "nextLink";
             String filename;
             String link;
-            String nextFilename;
-            String nextLink;
-
-            private static final Map<String, MyLoadTask> pendingDownloads = new HashMap<>();
-
-            private static synchronized void removePendingDownload(String link, File imageFile) {
-                LOG_V("removePendingDownload(" + imageFile + ")");
-                pendingDownloads.remove(link);
-            }
-
-            private static synchronized void markPendingDownloadAsAbandoned(String link) {
-                MyLoadTask loadTask = pendingDownloads.get(link);
-                if (loadTask != null) {
-                    loadTask.cancel(true);
-                }
-            }
+            MyLoadTask loadTask;
 
             @Override
             public void onCreate(Bundle savedInstanceState) {
@@ -423,7 +417,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             public void onDestroy() {
                 super.onDestroy();
                 LOG_V("onDestroy(" + filename + ")");
-                markPendingDownloadAsAbandoned(link);
+                if (loadTask != null) {
+                    loadTask.cancel(true);
+                }
             }
 
             private void restore() {
@@ -431,8 +427,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 if (args != null) {
                     filename = args.getString(FILENAME);
                     link = args.getString(LINK);
-                    nextFilename = args.getString(NEXT_FILENAME);
-                    nextLink = args.getString(NEXT_LINK);
                 }
             }
 
@@ -450,63 +444,33 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 }
                 outState.putString(FILENAME, filename);
                 outState.putString(LINK, link);
-                outState.putString(NEXT_FILENAME, nextFilename);
-                outState.putString(NEXT_LINK, nextLink);
             }
 
             @Override
             public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle bundle) {
+                LOG_V("onCreateView(" + filename + ")");
+
                 View pageView = inflater.inflate(R.layout.image, container, false);
                 AppCompatImageView imageView = pageView.findViewById(R.id.imageView);
-                ProgressBar progressBar = (ProgressBar) pageView.findViewById(R.id.progressBar);
+                ProgressBar progressBar = pageView.findViewById(R.id.progressBar);
                 imageView.setTag(progressBar);
 
-                LOG_V("onCreate(" + filename + ")");
-
-                File cacheDir = getContext().getCacheDir();
-                File pictureFile = new File(cacheDir, filename);
-                if (!internetAvailable(getContext()) && !pictureFile.exists()) {
-                    //Toast.makeText(getContext(), "Internet Problem", Toast.LENGTH_SHORT).show();
-                    imageView.setImageResource(R.drawable.internet_problem);
-                    return pageView;
-                }
-
-                loadPicture(pictureFile, link, imageView);
-                // FragmentStatePagerAdapter does this automatically :)
-//                if (nextFilename != null) {
-//                    loadPicture(new File(cacheDir, nextFilename), nextLink, null);
-//                }
+                loadTask = new MyLoadTask(getContext(), link, filename, imageView);
+                loadTask.execute();
 
                 return pageView;
             }
 
-            private static synchronized void loadPicture(File imageFile, String link, AppCompatImageView imageView) {
-                LOG_V("loadPicture:(" + imageFile + ")");
-                MyLoadTask loadTask = pendingDownloads.get(link);
-                if (loadTask != null) {
-                    LOG_V("Remembering new image view: " + imageFile);
-                    loadTask.setImageView(imageView);
-                } else {
-                    loadTask = new MyLoadTask(link, imageFile, imageView);
-                    pendingDownloads.put(link, loadTask);
-                    LOG_V("Added pending download:" + imageFile);
-                    LOG_V("Executing download: " + imageFile);
-                    loadTask.execute();
-                }
-            }
-
             private static class MyLoadTask extends AsyncTask<Void, Void, Bitmap> {
-                File imageFile;
+                String imageFile;
                 WeakReference<ImageView> imageView;
                 String link;
+                WeakReference<Context> contextRef;
 
-                MyLoadTask(String link, File imageFile, ImageView imageView) {
+                MyLoadTask(Context context, String link, String imageFile, ImageView imageView) {
                     this.imageFile = imageFile;
                     this.link = link;
-                    setImageView(imageView);
-                }
-
-                synchronized void setImageView(ImageView imageView) {
+                    this.contextRef = new WeakReference<>(context);
                     this.imageView = new WeakReference<>(imageView);
                 }
 
@@ -514,28 +478,49 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 protected Bitmap doInBackground(Void[] voids) {
                     LOG_V("doInBackground(" + imageFile + ")");
                     Bitmap savedBitmap = null;
-                    if (imageFile.exists()) {
-                        LOG_V("The file " + imageFile + " exists.");
-                        if (getImageView() == null || isCancelled()) {
-                            return null;
-                        } else {
-                            LOG_V("Decoding image from " + imageFile);
-                            savedBitmap = BitmapFactory.decodeFile(imageFile.getAbsolutePath());
+                    Context context = contextRef.get();
+                    if (context == null) {
+                        return null;
+                    }
+                    List<File> cacheDirs = new ArrayList<>();
+                    cacheDirs.add(context.getCacheDir());
+                    // TODO: cacheDirs.add(context.getExternalCacheDir()); kad proverim kako radi na >= 4.4
+                    for (File cacheDir : cacheDirs) {
+                        if (cacheDir == null) {
+                            continue;
+                        }
+                        if (savedBitmap != null) {
+                            break;
+                        }
+                        File savedImage = new File(cacheDir, imageFile);
+                        if (savedImage.exists()) {
+                            LOG_V("The file " + imageFile + " exists.");
+                            if (getImageView() == null || isCancelled()) {
+                                return null;
+                            } else {
+                                LOG_V("Decoding image from " + imageFile);
+                                savedBitmap = BitmapFactory.decodeFile(savedImage.getAbsolutePath());
+                            }
                         }
                     }
                     if (savedBitmap != null) {
                         return savedBitmap;
                     }
 
-                    deleteOldSavedFiles(imageFile);
+                    ImageView destinationView = imageView.get();
+                    if (destinationView == null) {
+                        return null;
+                    }
+                    if (!internetAvailable(context)) {
+                        return null;
+                    }
+
+                    File imageToDownload = new File(context.getCacheDir(), imageFile);
                     if (isCancelled()) {
                         return null;
                     } else {
-                        ImageView destinationView = imageView.get();
-                        if (destinationView == null) {
-                             return null;
-                        }
-                        return DownloadAndSave.downloadAndSave(link, imageFile, destinationView.getWidth(), destinationView.getHeight());
+                        deleteOldSavedFiles(imageToDownload);
+                        return DownloadAndSave.downloadAndSave(link, imageToDownload, destinationView.getWidth(), destinationView.getHeight());
                     }
                 }
 
@@ -569,8 +554,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     ProgressBar progressBar = view != null ? (ProgressBar) view.getTag() : null;
                     try {
                         LOG_V("onPostExecute(" + imageFile + ")");
-                        removePendingDownload(link, imageFile);
-                        if (bitmap == null) {
+                        if (bitmap == null && !isCancelled()) {
+                            Context context = contextRef.get();
+                            if (view != null && context != null && !internetAvailable(context)) {
+                                view.setImageResource(R.drawable.internet_problem);
+                            }
                             return;
                         }
                         if (view != null) {

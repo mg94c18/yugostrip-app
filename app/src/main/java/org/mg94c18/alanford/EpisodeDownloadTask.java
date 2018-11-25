@@ -3,8 +3,10 @@ package org.mg94c18.alanford;
 import android.app.Activity;
 import android.app.ProgressDialog;
 import android.content.DialogInterface;
+import android.graphics.Bitmap;
 import android.os.AsyncTask;
 import android.view.WindowManager;
+import android.widget.Toast;
 
 import static org.mg94c18.alanford.MainActivity.LOG_V;
 
@@ -73,7 +75,8 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
             LOG_V("publishProgress(" + i + ")");
             publishProgress(i);
 
-            String filename = episodeId + "_" + i;
+            String filename = DownloadAndSave.fileNameFromLink(links.get(i), episodeId, i);
+            // TODO: use activity.getExternalCacheDir()
             File file = new File(activity.getCacheDir(), filename);
             if (file.exists()) {
                 LOG_V(filename + " already exists");
@@ -84,16 +87,20 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
                 continue;
             }
             LOG_V("Downloading " + filename);
-            DownloadAndSave.downloadAndSave(links.get(i), file, 0, 0);
+            Bitmap bitmap = DownloadAndSave.downloadAndSave(links.get(i), file, 0, 0);
+            if (bitmap == null) {
+                return Boolean.FALSE;
+            }
         }
         return Boolean.TRUE;
     }
 
     @Override
-    protected void onPostExecute(Boolean result) {
+    protected void onPostExecute(Boolean success) {
         LOG_V("onPostExecute");
         keepScreenOn(false);
         closeProgressDialog();
+        Toast.makeText(activity, success ? "Uspelo je :)" : "Nažalost, nije uspelo :(", Toast.LENGTH_SHORT).show();
     }
 
     private void closeProgressDialog() {

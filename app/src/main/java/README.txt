@@ -1,8 +1,8 @@
 FEEDBACK:
 Davor Mandić:
-    - Što se tiče, one tri točke u lijevom gornjem kutu, bilo bi zanimljivo imati opciju MOJE OMILJENE EPIZODE.
     - Bilo bi zgodno, kada bi se moglo birati stranice: npr. hoću otići pogledati samo stranice od 30 do 36 u epizodi Trojica iz Yume.
-    - Nekada, kada ostanem na npr. 56 stranici,.... i kada ponovno hoću čitati epizodu,.... aplikacija vrati strip na početak.
+    - Kao i zumiranje stripa ( zoom in / out ),.... ima ljudi koji su "ćoravi",....
+    - Što se tiče, one tri točke u lijevom gornjem kutu, bilo bi zanimljivo imati opciju MOJE OMILJENE EPIZODE.
 
 TODO:
 * lint
