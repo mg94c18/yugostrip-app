@@ -7,13 +7,16 @@
     <item android:id="@+id/action_episodes"
         android:title="Spisak epizoda"
         app:showAsAction="never"/>
+    <item android:id="@+id/go_to_page"
+        android:title="Idi na stranu..."
+        app:showAsAction="never"/>
     <item android:id="@+id/action_download"
         android:title="Sačuvaj na SD card"
         app:showAsAction="never"
         android:visible="false"/>
     <item android:id="@+id/action_review"
         app:showAsAction="never"
-        android:title="Vidi u Google Play" />
+        android:title="@string/play_intent_title" />
     <item android:id="@+id/search"
         android:title="Nađi..."
         app:showAsAction="never"

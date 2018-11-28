@@ -11,23 +11,28 @@ import android.widget.Toast;
 import static org.mg94c18.alanford.MainActivity.LOG_V;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.util.List;
 
 public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> implements DialogInterface.OnCancelListener {
-    private Activity activity;
+    private WeakReference<Activity> activityRef;
     private ProgressDialog progressDialog;
     private List<String> links;
     private String title;
     private String episodeId;
 
-    public EpisodeDownloadTask(Activity activity, String episodeId, List<String> links, String title) {
-        this.activity = activity;
+    EpisodeDownloadTask(Activity activity, String episodeId, List<String> links, String title) {
+        this.activityRef = new WeakReference<>(activity);
         this.links = links;
         this.title = title;
         this.episodeId = episodeId;
     }
 
     private void keepScreenOn(boolean on) {
+        final Activity activity = activityRef.get();
+        if (activity == null) {
+            return;
+        }
         if (on) {
             activity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         } else {
@@ -37,9 +42,13 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
 
     @Override
     public void onPreExecute() {
+        final Activity activity = activityRef.get();
+        if (activity == null) {
+            return;
+        }
         LOG_V("onPreExecute");
         progressDialog = new ProgressDialog(activity);
-        progressDialog.setTitle(title);
+        progressDialog.setTitle("Snimam '" + title + "' na SD card.  Malo strpljenja...");
         progressDialog.setCancelable(true);
         progressDialog.setCanceledOnTouchOutside(false);
         progressDialog.setMax(links.size());
@@ -75,9 +84,17 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
             LOG_V("publishProgress(" + i + ")");
             publishProgress(i);
 
+            final Activity activity = activityRef.get();
+            if (activity == null) {
+                return null;
+            }
+
             String filename = DownloadAndSave.fileNameFromLink(links.get(i), episodeId, i);
-            // TODO: use activity.getExternalCacheDir()
-            File file = new File(activity.getCacheDir(), filename);
+            File cacheDir = ExternalStorageHelper.getExternalCacheDir(activity);
+            if (cacheDir == null) {
+                return null;
+            }
+            File file = new File(cacheDir, filename);
             if (file.exists()) {
                 LOG_V(filename + " already exists");
                 continue;
@@ -100,7 +117,11 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
         LOG_V("onPostExecute");
         keepScreenOn(false);
         closeProgressDialog();
-        Toast.makeText(activity, success ? "Uspelo je :)" : "Nažalost, nije uspelo :(", Toast.LENGTH_SHORT).show();
+        final Activity activity = activityRef.get();
+        if (activity == null) {
+            return;
+        }
+        Toast.makeText(activity, (success != null && success) ? "Uspelo je :)  Uživajte u čitanju!" : "Nažalost, nije uspelo :(", Toast.LENGTH_LONG).show();
     }
 
     private void closeProgressDialog() {

@@ -9,7 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 
 public class GoogleBitmapHelper {
-    public static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
+    private static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
         // Raw height and width of image
         final int height = options.outHeight;
         final int width = options.outWidth;
@@ -38,11 +38,11 @@ public class GoogleBitmapHelper {
     /**
      * Creates sampled bitmap from input stream, using given file for temp storage.
      * @param inputStream the stream to read from and consume; we don't call .close on the stream
-     * @param reqWidth
-     * @param reqHeight
+     * @param reqWidth width for the destination view, or 0 if not available
+     * @param reqHeight height for the destination view, or 0 if not available
      * @param tempFile the caller is responsible for deleting the file
-     * @return
-     * @throws IOException
+     * @return the scaled bitmap from the input stream
+     * @throws IOException in case reading from the stream or writing to file fails
      */
     public static Bitmap decodeSampledBitmapFromStream(InputStream inputStream, int reqWidth, int reqHeight, File tempFile) throws IOException {
         FileOutputStream fileOutputStream = null;

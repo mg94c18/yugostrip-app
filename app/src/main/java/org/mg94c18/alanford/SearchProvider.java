@@ -60,7 +60,7 @@ public class SearchProvider extends ContentProvider {
             boolean addThis = false;
             if (NUMBERS.get(i).contains(query)) {
                 addThis = true;
-            } else if (DATES.get(i).contains(uri.getLastPathSegment())) {
+            } else if (!query.equals(".") && DATES.get(i).contains(uri.getLastPathSegment())) {
                 addThis = true;
             } else {
                 for (String q : querySet) {

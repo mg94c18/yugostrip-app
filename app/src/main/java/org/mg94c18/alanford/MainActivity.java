@@ -1,7 +1,6 @@
 package org.mg94c18.alanford;
 
-import android.app.Activity;
-import android.app.ProgressDialog;
+import android.app.AlertDialog;
 import android.app.SearchManager;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -15,7 +14,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Environment;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
@@ -27,9 +25,11 @@ import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.AppCompatImageView;
+import android.text.InputType;
 import android.util.Log;
 import android.util.Pair;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -37,8 +37,11 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.inputmethod.EditorInfo;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.ProgressBar;
@@ -51,20 +54,18 @@ import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     public static final String TAG = "AlanFord";
-    private static final long MAX_DOWNLOADED_IMAGES = 150;
+    private static final long MAX_DOWNLOADED_IMAGES = 20;
     private static final String SHARED_PREFS_NAME = "config";
     private static final String EPISODE = "episode";
     private static final String DRAWER = "drawer";
     private static final String DRAWER_SELECTION = "drawer_selection";
     private static final String CURRENT_PAGE_EPISODE = "current_page_episode";
     private static final String CURRENT_PAGE = "current_page";
-    private static final String CONTACT_EMAIL = "mg94c18@tesla.rcub.bg.ac.rs";
+    private static final String CONTACT_EMAIL = "yckopo@gmail.com";
     private static final String MY_ACTION_VIEW = "org.mg94c18.alanford.VIEW";
 
     ViewPager viewPager;
@@ -76,6 +77,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     List<String> dates;
     int selectedEpisode = 0;
     EpisodeDownloadTask downloadTask;
+    AlertDialog pagePickerDialog;
 
     public static void LOG_V(String s) {
         if (BuildConfig.DEBUG) {
@@ -89,18 +91,43 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
+    private static int normalizePageIndex(int i, int max) {
+        if (i < 0) {
+            return 0;
+        }
+
+        if (max <= 2) {
+            return -1;
+        }
+
+        if (i >= max) {
+            return max - 1;
+        }
+
+        if (i == 1) {
+            return 0;
+        }
+
+        if (i == 2) {
+            i = 3;
+        }
+
+        return i - 2;
+    }
+
     private class MyArrayAdapter extends ArrayAdapter<String> {
-        public MyArrayAdapter(@NonNull Context context, int resource) {
+        MyArrayAdapter(@NonNull Context context, int resource) {
             super(context, resource, titles);
         }
 
         @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
+        public @NonNull View getView(int position, View convertView, @NonNull ViewGroup parent) {
             if (convertView == null) {
                 convertView = getLayoutInflater().inflate(android.R.layout.simple_list_item_1, parent, false);
             }
             TextView textView = (TextView) convertView;
-            textView.setText(numbers.get(position) + ". " + titles.get(position));
+            String title = numbers.get(position) + ". " + titles.get(position);
+            textView.setText(title);
             if (position == selectedEpisode) {
                 textView.setTypeface(null, Typeface.BOLD);
             } else {
@@ -224,7 +251,16 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             downloadTask.cancel(true);
             downloadTask = null;
         }
+        dismissPagePickerDialog();
         saveCurrentPage(viewPager.getCurrentItem());
+    }
+
+    private void dismissPagePickerDialog() {
+        if (pagePickerDialog != null) {
+            pagePickerDialog.cancel();
+            pagePickerDialog.dismiss();
+            pagePickerDialog = null;
+        }
     }
 
     @Override
@@ -238,10 +274,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 (SearchManager) getSystemService(Context.SEARCH_SERVICE);
         SearchView searchView =
                 (SearchView) menu.findItem(R.id.search).getActionView();
-        searchView.setSearchableInfo(
-                searchManager.getSearchableInfo(getComponentName()));
+        if (searchManager != null) {
+            searchView.setSearchableInfo(
+                    searchManager.getSearchableInfo(getComponentName()));
+        }
 
-        menu.findItem(R.id.action_download).setVisible("KFTT".equals(Build.MODEL));
+        menu.findItem(R.id.action_download).setVisible(ExternalStorageHelper.getExternalCacheDir(this) != null);
 
         return super.onCreateOptionsMenu(menu);
     }
@@ -261,42 +299,81 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 }
                 return true;
             case R.id.action_episodes:
-                drawerLayout.openDrawer(Gravity.LEFT);
+                drawerLayout.openDrawer(Gravity.START);
                 return true;
             case R.id.action_download:
                 final String errorMessage;
-                // TODO: use Environment.getExternalStorageState();
-                if (!internetAvailable(this)) {
+                String storageState = Environment.getExternalStorageState();
+                if (internetNotAvailable(this)) {
                     errorMessage = "Internet Problem";
-//                } else if (!externalStorageHelper.mExternalStorageAvailable) {
-//                    errorMessage = "Memorijska kartica nije ubačena";
-//                } else if (!externalStorageHelper.mExternalStorageWriteable) {
-//                    errorMessage = "Memorijska kartica je read-only";
+                } else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(storageState)) {
+                    errorMessage = "Memorijska kartica je ubačena, ali je read-only";
+                } else if (!Environment.MEDIA_MOUNTED.equals(storageState)
+                        || ExternalStorageHelper.getExternalCacheDir(this) == null) {
+                    errorMessage = "Ne vidim memorijsku karticu";
                 } else {
                     errorMessage = null;
                 }
                 if (errorMessage != null) {
-                    Toast.makeText(this, errorMessage, Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show();
                     return true;
                 }
                 downloadTask = new EpisodeDownloadTask(this, pagerAdapter.episode, pagerAdapter.links, titles.get(selectedEpisode));
                 downloadTask.execute();
                 return true;
             case R.id.action_review:
-                Intent intent = new Intent(Intent.ACTION_VIEW);
-                intent.setData(Uri.parse(
-                        "https://play.google.com/store/apps/details?id=" + getPackageName()));
-                intent.setPackage("com.android.vending");
+                Intent intent = PlayIntentMaker.createPlayIntent(this);
                 if (intent.resolveActivity(getPackageManager()) != null) {
                     startActivity(intent);
                 }
                 return true;
-
+            case R.id.go_to_page:
+                final EditText input = new EditText(this);
+                input.setOnEditorActionListener(
+                        new TextView.OnEditorActionListener() {
+                            @Override
+                            public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
+                                if (actionId == EditorInfo.IME_ACTION_DONE || (keyEvent != null && keyEvent.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
+                                    String numberString = textView.getText().toString();
+                                    dismissPagePickerDialog();
+                                    tryGoingToPage(numberString);
+                                }
+                                return false;
+                            }
+                        });
+                dismissPagePickerDialog();
+                input.setInputType(InputType.TYPE_CLASS_NUMBER);
+                pagePickerDialog = new AlertDialog.Builder(this)
+                        .setCancelable(true)
+                        .setMessage("Unesite broj strane:")
+                        .setView(input)
+                        .setNegativeButton(android.R.string.cancel, null)
+                        .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                tryGoingToPage(input.getText().toString());
+                            }
+                        })
+                        .create();
+                pagePickerDialog.setCanceledOnTouchOutside(false);
+                pagePickerDialog.show();
+                return true;
             case R.id.search:
                 onSearchRequested();
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
+        }
+    }
+
+    private void tryGoingToPage(String numberString) {
+        try {
+            int pagePicked = normalizePageIndex(Integer.parseInt(numberString), viewPager.getAdapter().getCount());
+            if (pagePicked != -1) {
+                viewPager.setCurrentItem(pagePicked);
+            }
+        } catch (NumberFormatException nfe) {
+            Log.wtf("Invalid input", nfe);
         }
     }
 
@@ -320,23 +397,23 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         preferences.edit().putInt(CURRENT_PAGE, currentPage).putInt(CURRENT_PAGE_EPISODE, selectedEpisode).apply();
     }
 
-    private static boolean internetAvailable(Context context) {
+    private static boolean internetNotAvailable(Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(CONNECTIVITY_SERVICE);
         if (connectivityManager == null) {
             LOG_V("Can't get connectivityManager");
-            return false;
+            return true;
         }
         LOG_V("Got connectivityManager");
 
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
         if (networkInfo == null) {
             LOG_V("getActiveNetworkInfo returned null");
-            return false;
+            return true;
         }
 
         boolean connected = networkInfo.isConnected();
-        LOG_V("internetAvailable: " + connected);
-        return connected;
+        LOG_V("Connected=" + connected);
+        return !connected;
     }
 
     private int findSavedEpisode(Bundle savedInstanceState) {
@@ -484,7 +561,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     }
                     List<File> cacheDirs = new ArrayList<>();
                     cacheDirs.add(context.getCacheDir());
-                    // TODO: cacheDirs.add(context.getExternalCacheDir()); kad proverim kako radi na >= 4.4
+                    cacheDirs.add(ExternalStorageHelper.getExternalCacheDir(context));
                     for (File cacheDir : cacheDirs) {
                         if (cacheDir == null) {
                             continue;
@@ -511,7 +588,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     if (destinationView == null) {
                         return null;
                     }
-                    if (!internetAvailable(context)) {
+                    if (internetNotAvailable(context)) {
                         return null;
                     }
 
@@ -556,7 +633,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         LOG_V("onPostExecute(" + imageFile + ")");
                         if (bitmap == null && !isCancelled()) {
                             Context context = contextRef.get();
-                            if (view != null && context != null && !internetAvailable(context)) {
+                            if (view != null && context != null && internetNotAvailable(context)) {
                                 view.setImageResource(R.drawable.internet_problem);
                             }
                             return;

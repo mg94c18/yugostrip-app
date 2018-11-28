@@ -6,8 +6,8 @@ android {
         applicationId 'org.mg94c18.alanford'
         minSdkVersion 15
         targetSdkVersion 26
-        versionCode 7
-        versionName "1.7"
+        versionCode 9
+        versionName "1.9"
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -16,7 +16,14 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
+    flavorDimensions "targetStore"
     productFlavors {
+        amazon {
+            dimension "targetStore"
+        }
+        google {
+            dimension "targetStore"
+        }
     }
 }
 

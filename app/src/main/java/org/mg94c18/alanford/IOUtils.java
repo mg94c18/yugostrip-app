@@ -1,7 +1,5 @@
 package org.mg94c18.alanford;
 
-import android.util.Log;
-
 import java.io.Closeable;
 import java.io.IOException;
 import java.io.InputStream;
