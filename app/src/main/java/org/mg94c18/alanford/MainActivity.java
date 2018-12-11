@@ -17,6 +17,7 @@ import android.os.AsyncTask;
 import android.os.Environment;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentStatePagerAdapter;
@@ -34,11 +35,11 @@ import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -55,6 +56,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.ListIterator;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     public static final String TAG = "AlanFord";
@@ -454,6 +456,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         List<String> links;
         String episode;
         Context context;
+        private static List<WeakReference<MyFragment>> FRAGMENTS_FOR_SCALING = new ArrayList<>();
 
         MyPagerAdapter(Context context, FragmentManager fm, String episode, AssetManager assetManager) {
             super(fm);
@@ -464,12 +467,31 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         @Override
         public Fragment getItem(int position) {
-            Fragment f = new MyFragment();
+            MyFragment f = new MyFragment();
             Bundle args = new Bundle();
             args.putString(MyFragment.FILENAME, DownloadAndSave.fileNameFromLink(links.get(position), episode, position));
             args.putString(MyFragment.LINK, links.get(position));
+            args.putString(MyFragment.EPISODE_ID, episode);
+            cacheFragmentForScaling(f);
             f.setArguments(args);
             return f;
+        }
+
+        private static synchronized void cacheFragmentForScaling(MyFragment f) {
+            FRAGMENTS_FOR_SCALING.add(new WeakReference<>(f));
+        }
+
+        private static synchronized void scaleCachedFragments(SharedPreferences preferences) {
+            ListIterator<WeakReference<MyFragment>> iterator = FRAGMENTS_FOR_SCALING.listIterator();
+            while (iterator.hasNext()) {
+                WeakReference<MyFragment> elem = iterator.next();
+                MyFragment f = elem.get();
+                if (f == null) {
+                    iterator.remove();
+                    continue;
+                }
+                f.updateScaleFromPrefs(preferences);
+            }
         }
 
         @Override
@@ -477,15 +499,28 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             return links.size();
         }
 
-        public static class MyFragment extends Fragment {
+        public static class MyFragment extends Fragment implements View.OnTouchListener, ScaleGestureDetector.OnScaleGestureListener {
             public static final String FILENAME = "filename";
             public static final String LINK = "link";
+            public static final String EPISODE_ID = "episode";
+            private static final String SCALE_X = "scale_x";
+            private static final String SCALE_Y = "scale_y";
+            private static final float DELTA = 0.02f;
+            private static final float SCALE_MIN = 1.00f;
+            private static final float SCALE_MAX = 1.20f;
+            private static final float SPAN_THRESHOLD = 100f;
+
+            String episodeId;
             String filename;
             String link;
             MyLoadTask loadTask;
+            ScaleGestureDetector mScaleDetector;
+            float mScaleX = 1.0f;
+            float mScaleY = 1.0f;
 
             @Override
             public void onCreate(Bundle savedInstanceState) {
+                mScaleDetector = new ScaleGestureDetector(getContext(), this);
                 super.onCreate(savedInstanceState);
                 restore();
             }
@@ -504,6 +539,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 if (args != null) {
                     filename = args.getString(FILENAME);
                     link = args.getString(LINK);
+                    episodeId = args.getString(EPISODE_ID);
                 }
             }
 
@@ -531,11 +567,99 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 AppCompatImageView imageView = pageView.findViewById(R.id.imageView);
                 ProgressBar progressBar = pageView.findViewById(R.id.progressBar);
                 imageView.setTag(progressBar);
+                updateScaleFromPrefs(getContext().getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE), imageView);
+                pageView.setOnTouchListener(this);
 
                 loadTask = new MyLoadTask(getContext(), link, filename, imageView);
                 loadTask.execute();
 
                 return pageView;
+            }
+
+            @Override
+            public boolean onTouch(View view, MotionEvent motionEvent) {
+                LOG_V("Scaling: onTouch");
+                mScaleDetector.onTouchEvent(motionEvent);
+                return true;
+            }
+
+            @Override
+            public boolean onScale(ScaleGestureDetector scaleGestureDetector) {
+                LOG_V("Scaling: onScale");
+                float scaleFactor = scaleGestureDetector.getScaleFactor();
+                float change = Math.abs(scaleFactor - 1.0f);
+                if (Float.compare(change, DELTA) < 0) {
+                    return false;
+                }
+
+                if (loadTask == null) {
+                    return true;
+                }
+                ImageView view = loadTask.getImageView();
+                if (view == null) {
+                    return true;
+                }
+
+                float scaleX = calculateScale(view.getScaleX(), scaleFactor, scaleGestureDetector.getCurrentSpanX());
+                float scaleY = calculateScale(view.getScaleY(), scaleFactor, scaleGestureDetector.getCurrentSpanY());
+                if (Float.compare(scaleX, view.getScaleX()) == 0 && Float.compare(scaleY, view.getScaleY()) == 0) {
+                    return false;
+                }
+
+                SharedPreferences preferences = getContext().getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+                preferences.edit()
+                        .putFloat(episodeId + SCALE_X, scaleX)
+                        .putFloat(episodeId + SCALE_Y, scaleY)
+                        .apply();
+
+                updateScaleFromPrefs(preferences, view);
+                scaleCachedFragments(preferences);
+                return true;
+            }
+
+            public void updateScaleFromPrefs(SharedPreferences preferences) {
+                updateScaleFromPrefs(preferences, loadTask != null ? loadTask.getImageView() : null);
+            }
+
+            private void updateScaleFromPrefs(SharedPreferences preferences, @Nullable ImageView imageView) {
+                if (imageView == null) {
+                    return;
+                }
+                mScaleX = preferences.getFloat(episodeId + SCALE_X, 1.0f);
+                mScaleY = preferences.getFloat(episodeId + SCALE_Y, 1.0f);
+                if (Float.compare(mScaleX, imageView.getScaleX()) == 0 && Float.compare(mScaleY, imageView.getScaleY()) == 0) {
+                    return;
+                }
+
+                imageView.setScaleX(mScaleX);
+                imageView.setScaleY(mScaleY);
+                imageView.invalidate();
+            }
+
+            private static float calculateScale(float scale, float scaleFactor, float currentSpan) {
+                if (Float.compare(Math.abs(currentSpan), SPAN_THRESHOLD) < 0) {
+                    return scale;
+                }
+
+                if (Float.compare(scaleFactor, 1.0f) < 0) {
+                    scale -= DELTA;
+                } else {
+                    scale += DELTA;
+                }
+
+                // Don't let the object get too small or too large.
+                return Math.max(SCALE_MIN, Math.min(scale, SCALE_MAX));
+            }
+
+            @Override
+            public boolean onScaleBegin(ScaleGestureDetector scaleGestureDetector) {
+                LOG_V("Scaling: onScaleBegin");
+                return true;
+            }
+
+            @Override
+            public void onScaleEnd(ScaleGestureDetector scaleGestureDetector) {
+                LOG_V("Scaling: onScaleEnd");
             }
 
             private static class MyLoadTask extends AsyncTask<Void, Void, Bitmap> {
