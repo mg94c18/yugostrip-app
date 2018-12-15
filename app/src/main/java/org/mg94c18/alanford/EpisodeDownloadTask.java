@@ -8,7 +8,7 @@ import android.os.AsyncTask;
 import android.view.WindowManager;
 import android.widget.Toast;
 
-import static org.mg94c18.alanford.MainActivity.LOG_V;
+import static org.mg94c18.alanford.Logger.LOG_V;
 
 import java.io.File;
 import java.lang.ref.WeakReference;
@@ -20,12 +20,23 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
     private List<String> links;
     private String title;
     private String episodeId;
+    private File cacheDir;
+    private Destination destination;
+    private long fileLimit;
 
-    EpisodeDownloadTask(Activity activity, String episodeId, List<String> links, String title) {
+    enum Destination {
+        INTERNAL_MEMORY,
+        SD_CARD
+    }
+
+    EpisodeDownloadTask(long fileLimit, Activity activity, String episodeId, List<String> links, String title, File cacheDir, Destination destination) {
         this.activityRef = new WeakReference<>(activity);
         this.links = links;
         this.title = title;
         this.episodeId = episodeId;
+        this.cacheDir = cacheDir;
+        this.destination = destination;
+        this.fileLimit = fileLimit;
     }
 
     private void keepScreenOn(boolean on) {
@@ -40,15 +51,33 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
         }
     }
 
+    private static String getDestinationName(Destination destination) {
+        if (destination == Destination.INTERNAL_MEMORY) {
+            return "internu memoriju";
+        } else {
+            return "SD card";
+        }
+    }
+
     @Override
     public void onPreExecute() {
         final Activity activity = activityRef.get();
         if (activity == null) {
             return;
         }
-        LOG_V("onPreExecute");
+        if (BuildConfig.DEBUG) { LOG_V("onPreExecute"); }
         progressDialog = new ProgressDialog(activity);
-        progressDialog.setTitle("Snimam '" + title + "' na SD card.  Malo strpljenja...");
+        progressDialog.setTitle("Malo strpljenja...");
+
+        String message = "Snimam '" + title + "' na " + getDestinationName(destination);
+        if (destination == Destination.SD_CARD) {
+            int index = cacheDir.getAbsolutePath().indexOf("Android/data");
+            if (index != -1) {
+                message = message + " (" + cacheDir.getAbsolutePath().substring(index) + ")";
+            }
+        }
+        message = message + ".";
+        progressDialog.setMessage(message);
         progressDialog.setCancelable(true);
         progressDialog.setCanceledOnTouchOutside(false);
         progressDialog.setMax(links.size());
@@ -61,27 +90,32 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
 
     @Override
     public void onCancel(DialogInterface dialogInterface) {
-        LOG_V("onCancel");
+        if (BuildConfig.DEBUG) { LOG_V("onCancel"); }
         this.cancel(true);
         closeProgressDialog();
     }
 
     @Override
     public void onCancelled(Boolean result) {
-        LOG_V("onCancelled");
+        if (BuildConfig.DEBUG) { LOG_V("onCancelled"); }
         closeProgressDialog();
     }
 
     @Override
     protected void onProgressUpdate(Integer... progress) {
-        progressDialog.incrementProgressBy(1);
+        if (progressDialog != null) {
+            progressDialog.incrementProgressBy(1);
+        }
     }
 
     @Override
     protected Boolean doInBackground(Void... voids) {
-        LOG_V("doInBackground");
+        if (BuildConfig.DEBUG) { LOG_V("doInBackground"); }
+        if (fileLimit > -1) {
+            MainActivity.deleteOldSavedFiles(cacheDir, fileLimit);
+        }
         for (int i = 0; i < links.size() && !isCancelled(); i++) {
-            LOG_V("publishProgress(" + i + ")");
+            if (BuildConfig.DEBUG) { LOG_V("publishProgress(" + i + ")"); }
             publishProgress(i);
 
             final Activity activity = activityRef.get();
@@ -90,20 +124,15 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
             }
 
             String filename = DownloadAndSave.fileNameFromLink(links.get(i), episodeId, i);
-            File cacheDir = ExternalStorageHelper.getExternalCacheDir(activity);
             if (cacheDir == null) {
                 return null;
             }
             File file = new File(cacheDir, filename);
             if (file.exists()) {
-                LOG_V(filename + " already exists");
+                if (BuildConfig.DEBUG) { LOG_V(filename + " already exists"); }
                 continue;
             }
-            if (new File(activity.getCacheDir(), filename + DownloadAndSave.TMP_SUFFIX).exists()) {
-                LOG_V(filename + " is already being downloaded");
-                continue;
-            }
-            LOG_V("Downloading " + filename);
+            if (BuildConfig.DEBUG) { LOG_V("Downloading " + filename); }
             Bitmap bitmap = DownloadAndSave.downloadAndSave(links.get(i), file, 0, 0);
             if (bitmap == null) {
                 return Boolean.FALSE;
@@ -114,7 +143,7 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
 
     @Override
     protected void onPostExecute(Boolean success) {
-        LOG_V("onPostExecute");
+        if (BuildConfig.DEBUG) { LOG_V("onPostExecute"); }
         keepScreenOn(false);
         closeProgressDialog();
         final Activity activity = activityRef.get();
@@ -125,7 +154,7 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
     }
 
     private void closeProgressDialog() {
-        LOG_V("closeProgressDialog");
+        if (BuildConfig.DEBUG) { LOG_V("closeProgressDialog"); }
         if (progressDialog != null) {
             progressDialog.cancel();
             progressDialog.dismiss();

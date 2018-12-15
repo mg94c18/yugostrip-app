@@ -15,6 +15,8 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
+import static org.mg94c18.alanford.Logger.LOG_V;
+
 public class SearchProvider extends ContentProvider {
     public static List<String> TITLES;
     public static List<String> NUMBERS;
@@ -36,7 +38,7 @@ public class SearchProvider extends ContentProvider {
     @Override
     public Cursor query(@NonNull Uri uri, @Nullable String[] strings, @Nullable String s, @Nullable String[] strings1, @Nullable String s1) {
         String query = uri.getLastPathSegment().toLowerCase();
-        MainActivity.LOG_V("query(" + query + ")");
+        if (BuildConfig.DEBUG) { LOG_V("query(" + query + ")"); }
         MatrixCursor cursor = new MatrixCursor(MANDATORY_COLUMNS);
 
         Set<String> querySet = new HashSet<>();
@@ -56,6 +58,7 @@ public class SearchProvider extends ContentProvider {
             titlesLowercase.add(title.toLowerCase());
         }
 
+        int resultCount = 0;
         for (int i = 0; i < TITLES.size(); i++) {
             boolean addThis = false;
             if (NUMBERS.get(i).contains(query)) {
@@ -72,6 +75,7 @@ public class SearchProvider extends ContentProvider {
             }
 
             if (addThis) {
+                resultCount++;
                 MatrixCursor.RowBuilder builder = cursor.newRow();
                 builder.add(i); // BaseColumns._ID
                 builder.add(TITLES.get(i)); // SearchManager.SUGGEST_COLUMN_TEXT_1
@@ -79,6 +83,17 @@ public class SearchProvider extends ContentProvider {
                 builder.add(Integer.toString(i)); // SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA
             }
         }
+
+        if (BuildConfig.DEBUG) {
+            if (resultCount == 0 && query.equals("sync")) {
+                MatrixCursor.RowBuilder builder = cursor.newRow();
+                builder.add(0); // BaseColumns._ID
+                builder.add("Osveži spisak epizoda"); // SearchManager.SUGGEST_COLUMN_TEXT_1
+                builder.add("Za troubleshooting"); // SearchManager.SUGGEST_COLUMN_TEXT_2
+                builder.add(query); // SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA
+            }
+        }
+
         return cursor;
     }
 

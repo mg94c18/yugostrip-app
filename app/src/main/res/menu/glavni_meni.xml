@@ -2,7 +2,7 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/action_email"
-        android:title="Pitanja i sugestije"
+        android:title="Pitanja i problemi"
         app:showAsAction="never" />
     <item android:id="@+id/action_episodes"
         android:title="Spisak epizoda"
@@ -12,6 +12,10 @@
         app:showAsAction="never"/>
     <item android:id="@+id/action_download"
         android:title="Sačuvaj na SD card"
+        app:showAsAction="never"
+        android:visible="false"/>
+    <item android:id="@+id/action_download_internal"
+        android:title="Sačuvaj za offline"
         app:showAsAction="never"
         android:visible="false"/>
     <item android:id="@+id/action_review"

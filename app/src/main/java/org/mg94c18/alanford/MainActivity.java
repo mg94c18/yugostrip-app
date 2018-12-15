@@ -6,7 +6,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.AssetManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Typeface;
@@ -50,7 +49,12 @@ import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.mg94c18.alanford.sync.SyncAdapter;
+import static org.mg94c18.alanford.Logger.LOG_V;
+import static org.mg94c18.alanford.Logger.TAG;
+
 import java.io.File;
+import java.io.FileFilter;
 import java.lang.ref.WeakReference;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -59,16 +63,17 @@ import java.util.List;
 import java.util.ListIterator;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
-    public static final String TAG = "AlanFord";
-    private static final long MAX_DOWNLOADED_IMAGES = 20;
+    private static final long MAX_DOWNLOADED_IMAGES_ONLINE = 20;
+    private static final long MAX_DOWNLOADED_IMAGES_INTERNAL_OFFLINE = 500;
     private static final String SHARED_PREFS_NAME = "config";
     private static final String EPISODE = "episode";
     private static final String DRAWER = "drawer";
-    private static final String DRAWER_SELECTION = "drawer_selection";
     private static final String CURRENT_PAGE_EPISODE = "current_page_episode";
     private static final String CURRENT_PAGE = "current_page";
     private static final String CONTACT_EMAIL = "yckopo@gmail.com";
     private static final String MY_ACTION_VIEW = "org.mg94c18.alanford.VIEW";
+    private static final String INTERNET_PROBLEM = "Internet Problem";
+    private static final String INTERNAL_OFFLINE = "offline";
 
     ViewPager viewPager;
     MyPagerAdapter pagerAdapter;
@@ -80,18 +85,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     int selectedEpisode = 0;
     EpisodeDownloadTask downloadTask;
     AlertDialog pagePickerDialog;
-
-    public static void LOG_V(String s) {
-        if (BuildConfig.DEBUG) {
-            Log.v(TAG, s);
-        }
-    }
-
-    public static void LOG_D(String s) {
-        if (BuildConfig.DEBUG) {
-            Log.d(TAG, s);
-        }
-    }
+    static long syncIndex;
 
     private static int normalizePageIndex(int i, int max) {
         if (i < 0) {
@@ -164,6 +158,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             return false;
         }
 
+        if (BuildConfig.DEBUG) {
+            if (epizodeStr.equals("sync")) {
+                SyncAdapter.requestSyncNow(this);
+                return true;
+            }
+        }
+
         int episode;
         try {
             episode = Integer.parseInt(epizodeStr);
@@ -180,14 +181,17 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
-        LOG_V("onCreate");
+        if (BuildConfig.DEBUG) { LOG_V("onCreate"); }
         super.onCreate(savedInstanceState);
         downloadTask = null;
         setContentView(R.layout.activity_main);
 
-        dates = AssetLoader.load("dates", getAssets());
-        numbers = AssetLoader.load("numbers", getAssets());
-        titles = AssetLoader.load("titles", getAssets());
+        syncIndex = SyncAdapter.acquireSyncIndex(this);
+
+        // TODO: zapravo ne moram ovde ništa da učitavam, osim koliko treba da se prikaže slika
+        dates = AssetLoader.loadFromAssetOrUpdate(this, AssetLoader.DATES, syncIndex);
+        numbers = AssetLoader.loadFromAssetOrUpdate(this, AssetLoader.NUMBERS, syncIndex);
+        titles = AssetLoader.loadFromAssetOrUpdate(this, AssetLoader.TITLES, syncIndex);
 
         SearchProvider.TITLES = titles;
         SearchProvider.NUMBERS = numbers;
@@ -207,13 +211,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if (savedInstanceState != null && savedInstanceState.containsKey(DRAWER)) {
             Parcelable drawerState = savedInstanceState.getParcelable(DRAWER);
             if (drawerState != null) {
-                LOG_D("Restoring drawer instance state");
+                if (BuildConfig.DEBUG) { LOG_V("Restoring drawer instance state"); }
                 drawerList.onRestoreInstanceState(drawerState);
             } else {
                 Log.e(TAG, "Can't restore drawer instance state");
             }
         } else {
-            LOG_D("savedInstanceState doesn't contain drawer state");
+            if (BuildConfig.DEBUG) { LOG_V("savedInstanceState doesn't contain drawer state"); }
             drawerList.setSelection(selectedEpisode);
         }
 
@@ -222,13 +226,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 && currentPageAndEpizode.first != -1
                 && currentPageAndEpizode.second != -1
                 && currentPageAndEpizode.second == selectedEpisode) {
-            LOG_D("setCurrentItem(" + currentPageAndEpizode.first + ")");
+            if (BuildConfig.DEBUG) { LOG_V("setCurrentItem(" + currentPageAndEpizode.first + ")"); }
             viewPager.setCurrentItem(currentPageAndEpizode.first);
         } else {
-            LOG_D("Can't load current page: "
-                    + "getCurrentItem=" + viewPager.getCurrentItem()
-                    + "currentPageAndEpizode=" + currentPageAndEpizode
-                    + "selectedEpisode=" + selectedEpisode);
+            if (BuildConfig.DEBUG) { LOG_V("Can't load current page: " + "getCurrentItem=" + viewPager.getCurrentItem() + ", currentPageAndEpizode=" + currentPageAndEpizode + ", selectedEpisode=" + selectedEpisode); }
         }
     }
 
@@ -247,7 +248,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     public void onStop() {
-        LOG_V("onStop");
+        if (BuildConfig.DEBUG) { LOG_V("onStop"); }
         super.onStop();
         if (downloadTask != null) {
             downloadTask.cancel(true);
@@ -255,6 +256,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
         dismissPagePickerDialog();
         saveCurrentPage(viewPager.getCurrentItem());
+
+        SyncAdapter.setPeriodicSync(this);
     }
 
     private void dismissPagePickerDialog() {
@@ -281,7 +284,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     searchManager.getSearchableInfo(getComponentName()));
         }
 
-        menu.findItem(R.id.action_download).setVisible(ExternalStorageHelper.getExternalCacheDir(this) != null);
+        boolean sdCardReady = (ExternalStorageHelper.getExternalCacheDir(this) != null);
+        if (sdCardReady) {
+            menu.findItem(R.id.action_download).setVisible(true);
+        } else {
+            menu.findItem(R.id.action_download_internal).setVisible(true);
+        }
 
         return super.onCreateOptionsMenu(menu);
     }
@@ -307,7 +315,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 final String errorMessage;
                 String storageState = Environment.getExternalStorageState();
                 if (internetNotAvailable(this)) {
-                    errorMessage = "Internet Problem";
+                    errorMessage = INTERNET_PROBLEM;
                 } else if (Environment.MEDIA_MOUNTED_READ_ONLY.equals(storageState)) {
                     errorMessage = "Memorijska kartica je ubačena, ali je read-only";
                 } else if (!Environment.MEDIA_MOUNTED.equals(storageState)
@@ -320,7 +328,23 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     Toast.makeText(this, errorMessage, Toast.LENGTH_LONG).show();
                     return true;
                 }
-                downloadTask = new EpisodeDownloadTask(this, pagerAdapter.episode, pagerAdapter.links, titles.get(selectedEpisode));
+                downloadTask = new EpisodeDownloadTask(-1, this, pagerAdapter.episode, pagerAdapter.links, titles.get(selectedEpisode), ExternalStorageHelper.getExternalCacheDir(this), EpisodeDownloadTask.Destination.SD_CARD);
+                downloadTask.execute();
+                return true;
+            case R.id.action_download_internal:
+                if (internetNotAvailable(this)) {
+                    Toast.makeText(this, INTERNET_PROBLEM, Toast.LENGTH_LONG).show();
+                    return true;
+                }
+                File offlineDir = new File(getCacheDir(), INTERNAL_OFFLINE);
+                if (!offlineDir.exists()) {
+                    boolean success = offlineDir.mkdir();
+                    if (!success) {
+                        Log.wtf(TAG, "Can't create dir");
+                        // proceed and hope that mkdir() lied... if it fails we'll fail for the user
+                    }
+                }
+                downloadTask = new EpisodeDownloadTask(MAX_DOWNLOADED_IMAGES_INTERNAL_OFFLINE,this, pagerAdapter.episode, pagerAdapter.links, titles.get(selectedEpisode), offlineDir, EpisodeDownloadTask.Destination.INTERNAL_MEMORY);
                 downloadTask.execute();
                 return true;
             case R.id.action_review:
@@ -381,8 +405,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     protected void onSaveInstanceState(Bundle instanceState) {
-        LOG_V("onSaveInstanceState");
-        LOG_D("Saving selectedEpisode=" + selectedEpisode);
+        if (BuildConfig.DEBUG) { LOG_V("onSaveInstanceState"); }
+        if (BuildConfig.DEBUG) { LOG_V("Saving selectedEpisode=" + selectedEpisode); }
         instanceState.putInt(EPISODE, selectedEpisode);
         instanceState.putParcelable(DRAWER, drawerList.onSaveInstanceState());
 
@@ -394,7 +418,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
 
     private void saveCurrentPage(int currentPage) {
-        LOG_D("Saving currentPage=" + currentPage);
+        if (BuildConfig.DEBUG) { LOG_V("Saving currentPage=" + currentPage); }
         SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
         preferences.edit().putInt(CURRENT_PAGE, currentPage).putInt(CURRENT_PAGE_EPISODE, selectedEpisode).apply();
     }
@@ -402,19 +426,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static boolean internetNotAvailable(Context context) {
         ConnectivityManager connectivityManager = (ConnectivityManager) context.getSystemService(CONNECTIVITY_SERVICE);
         if (connectivityManager == null) {
-            LOG_V("Can't get connectivityManager");
+            if (BuildConfig.DEBUG) { LOG_V("Can't get connectivityManager"); }
             return true;
         }
-        LOG_V("Got connectivityManager");
+        if (BuildConfig.DEBUG) { LOG_V("Got connectivityManager"); }
 
         NetworkInfo networkInfo = connectivityManager.getActiveNetworkInfo();
         if (networkInfo == null) {
-            LOG_V("getActiveNetworkInfo returned null");
+            if (BuildConfig.DEBUG) { LOG_V("getActiveNetworkInfo returned null"); }
             return true;
         }
 
         boolean connected = networkInfo.isConnected();
-        LOG_V("Connected=" + connected);
+        if (BuildConfig.DEBUG) { LOG_V("Connected=" + connected); }
         return !connected;
     }
 
@@ -422,18 +446,18 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         final int savedEpisode;
         if (savedInstanceState != null && savedInstanceState.containsKey(EPISODE)) {
             savedEpisode = savedInstanceState.getInt(EPISODE);
-            LOG_V("Loaded episode from bundle: " + savedEpisode);
+            if (BuildConfig.DEBUG) { LOG_V("Loaded episode from bundle: " + savedEpisode); }
         } else {
             savedEpisode = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE).getInt(EPISODE, 0);
-            LOG_V("Loaded episode from shared prefs: " + savedEpisode);
+            if (BuildConfig.DEBUG) { LOG_V("Loaded episode from shared prefs: " + savedEpisode); }
         }
-        LOG_V("Returning savedEpisode=" + savedEpisode);
+        if (BuildConfig.DEBUG) { LOG_V("Returning savedEpisode=" + savedEpisode); }
         return savedEpisode;
     }
 
     @Override
     public void onItemClick(AdapterView<?> adapterView, View view, int position, long id) {
-        LOG_V("onItemClick: " + position);
+        if (BuildConfig.DEBUG) { LOG_V("onItemClick: " + position); }
         drawerList.setItemChecked(position, !drawerList.isItemChecked(position));
         drawerLayout.closeDrawer(drawerList);
         selectEpisode(position);
@@ -441,14 +465,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     private void selectEpisode(int position) {
         setTitle(titles.get(position));
-        pagerAdapter = new MyPagerAdapter(this, getSupportFragmentManager(), numbers.get(position), getAssets());
+        pagerAdapter = new MyPagerAdapter(this, getSupportFragmentManager(), numbers.get(position));
         viewPager.setAdapter(pagerAdapter);
         selectedEpisode = position;
-        int drawerListPosition = drawerList.getSelectedItemPosition();
-        LOG_V("Saving episode " + selectedEpisode + " and drawer list position " + drawerListPosition);
+        if (BuildConfig.DEBUG) { LOG_V("Saving episode " + selectedEpisode); }
         getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE).edit()
                 .putInt(EPISODE, selectedEpisode)
-                .putInt(DRAWER_SELECTION, drawerListPosition)
                 .apply();
     }
 
@@ -458,9 +480,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         Context context;
         private static List<WeakReference<MyFragment>> FRAGMENTS_FOR_SCALING = new ArrayList<>();
 
-        MyPagerAdapter(Context context, FragmentManager fm, String episode, AssetManager assetManager) {
+        MyPagerAdapter(Context context, FragmentManager fm, String episode) {
             super(fm);
-            links = AssetLoader.load(episode, assetManager);
+            links = AssetLoader.loadFromAssetOrUpdate(context, episode, syncIndex);
             this.episode = episode;
             this.context = context;
         }
@@ -472,6 +494,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             args.putString(MyFragment.FILENAME, DownloadAndSave.fileNameFromLink(links.get(position), episode, position));
             args.putString(MyFragment.LINK, links.get(position));
             args.putString(MyFragment.EPISODE_ID, episode);
+            args.putInt(MyFragment.PAGE_NUMBER, position);
             cacheFragmentForScaling(f);
             f.setArguments(args);
             return f;
@@ -503,6 +526,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             public static final String FILENAME = "filename";
             public static final String LINK = "link";
             public static final String EPISODE_ID = "episode";
+            public static final String PAGE_NUMBER = "pageNumber";
             private static final String SCALE_X = "scale_x";
             private static final String SCALE_Y = "scale_y";
             private static final float DELTA = 0.02f;
@@ -513,6 +537,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             String episodeId;
             String filename;
             String link;
+            int pageNumber;
             MyLoadTask loadTask;
             ScaleGestureDetector mScaleDetector;
             float mScaleX = 1.0f;
@@ -528,7 +553,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             @Override
             public void onDestroy() {
                 super.onDestroy();
-                LOG_V("onDestroy(" + filename + ")");
+                if (BuildConfig.DEBUG) { LOG_V("onDestroy(" + filename + ")"); }
                 if (loadTask != null) {
                     loadTask.cancel(true);
                 }
@@ -540,6 +565,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     filename = args.getString(FILENAME);
                     link = args.getString(LINK);
                     episodeId = args.getString(EPISODE_ID);
+                    pageNumber = args.getInt(PAGE_NUMBER);
                 }
             }
 
@@ -561,7 +587,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
             @Override
             public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle bundle) {
-                LOG_V("onCreateView(" + filename + ")");
+                if (BuildConfig.DEBUG) { LOG_V("onCreateView(" + filename + ")"); }
 
                 View pageView = inflater.inflate(R.layout.image, container, false);
                 AppCompatImageView imageView = pageView.findViewById(R.id.imageView);
@@ -578,14 +604,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
-                LOG_V("Scaling: onTouch");
+                if (BuildConfig.DEBUG) { LOG_V("Scaling: onTouch"); }
                 mScaleDetector.onTouchEvent(motionEvent);
                 return true;
             }
 
             @Override
             public boolean onScale(ScaleGestureDetector scaleGestureDetector) {
-                LOG_V("Scaling: onScale");
+                if (BuildConfig.DEBUG) { LOG_V("Scaling: onScale"); }
                 float scaleFactor = scaleGestureDetector.getScaleFactor();
                 float change = Math.abs(scaleFactor - 1.0f);
                 if (Float.compare(change, DELTA) < 0) {
@@ -608,8 +634,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 SharedPreferences preferences = getContext().getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
                 preferences.edit()
-                        .putFloat(episodeId + SCALE_X, scaleX)
-                        .putFloat(episodeId + SCALE_Y, scaleY)
+                        .putFloat(getScaleKey(SCALE_X), scaleX)
+                        .putFloat(getScaleKey(SCALE_Y), scaleY)
                         .apply();
 
                 updateScaleFromPrefs(preferences, view);
@@ -621,12 +647,20 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 updateScaleFromPrefs(preferences, loadTask != null ? loadTask.getImageView() : null);
             }
 
+            private String getScaleKey(String axis) {
+                String key = episodeId + axis;
+                if (pageNumber == 0) {
+                    key = key + ".0";
+                }
+                return key;
+            }
+
             private void updateScaleFromPrefs(SharedPreferences preferences, @Nullable ImageView imageView) {
                 if (imageView == null) {
                     return;
                 }
-                mScaleX = preferences.getFloat(episodeId + SCALE_X, 1.0f);
-                mScaleY = preferences.getFloat(episodeId + SCALE_Y, 1.0f);
+                mScaleX = preferences.getFloat(getScaleKey(SCALE_X), 1.0f);
+                mScaleY = preferences.getFloat(getScaleKey(SCALE_Y), 1.0f);
                 if (Float.compare(mScaleX, imageView.getScaleX()) == 0 && Float.compare(mScaleY, imageView.getScaleY()) == 0) {
                     return;
                 }
@@ -653,13 +687,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
             @Override
             public boolean onScaleBegin(ScaleGestureDetector scaleGestureDetector) {
-                LOG_V("Scaling: onScaleBegin");
+                if (BuildConfig.DEBUG) { LOG_V("Scaling: onScaleBegin"); }
                 return true;
             }
 
             @Override
             public void onScaleEnd(ScaleGestureDetector scaleGestureDetector) {
-                LOG_V("Scaling: onScaleEnd");
+                if (BuildConfig.DEBUG) { LOG_V("Scaling: onScaleEnd"); }
             }
 
             private static class MyLoadTask extends AsyncTask<Void, Void, Bitmap> {
@@ -677,7 +711,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 @Override
                 protected Bitmap doInBackground(Void[] voids) {
-                    LOG_V("doInBackground(" + imageFile + ")");
+                    if (BuildConfig.DEBUG) { LOG_V("doInBackground(" + imageFile + ")"); }
                     Bitmap savedBitmap = null;
                     Context context = contextRef.get();
                     if (context == null) {
@@ -686,6 +720,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     List<File> cacheDirs = new ArrayList<>();
                     cacheDirs.add(context.getCacheDir());
                     cacheDirs.add(ExternalStorageHelper.getExternalCacheDir(context));
+                    cacheDirs.add(new File(context.getCacheDir(), INTERNAL_OFFLINE));
                     for (File cacheDir : cacheDirs) {
                         if (cacheDir == null) {
                             continue;
@@ -695,11 +730,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         }
                         File savedImage = new File(cacheDir, imageFile);
                         if (savedImage.exists()) {
-                            LOG_V("The file " + imageFile + " exists.");
+                            if (BuildConfig.DEBUG) { LOG_V("The file " + imageFile + " exists."); }
                             if (getImageView() == null || isCancelled()) {
                                 return null;
                             } else {
-                                LOG_V("Decoding image from " + imageFile);
+                                if (BuildConfig.DEBUG) { LOG_V("Decoding image from " + imageFile); }
                                 savedBitmap = BitmapFactory.decodeFile(savedImage.getAbsolutePath());
                             }
                         }
@@ -720,28 +755,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     if (isCancelled()) {
                         return null;
                     } else {
-                        deleteOldSavedFiles(imageToDownload);
+                        deleteOldSavedFiles(imageToDownload.getParentFile(), MAX_DOWNLOADED_IMAGES_ONLINE);
                         return DownloadAndSave.downloadAndSave(link, imageToDownload, destinationView.getWidth(), destinationView.getHeight());
-                    }
-                }
-
-                private static synchronized void deleteOldSavedFiles(File imageFile) {
-                    File[] files = imageFile.getParentFile().listFiles();
-                    if (files != null && files.length > MAX_DOWNLOADED_IMAGES) {
-                        LOG_V("Found " + files.length + " cached images");
-                        Arrays.sort(files, new Comparator<File>() {
-                            @Override
-                            public int compare(File o1, File o2) {
-                                long diff = o1.lastModified() - o2.lastModified();
-                                if (diff < 0) return -1;
-                                else if (diff > 0) return 1;
-                                else return 0;
-                            }
-                        });
-
-                        for (int i = 0; i < files.length - MAX_DOWNLOADED_IMAGES; i++) {
-                            deleteFile(files[i]);
-                        }
                     }
                 }
 
@@ -754,7 +769,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     ImageView view = getImageView();
                     ProgressBar progressBar = view != null ? (ProgressBar) view.getTag() : null;
                     try {
-                        LOG_V("onPostExecute(" + imageFile + ")");
+                        if (BuildConfig.DEBUG) { LOG_V("onPostExecute(" + imageFile + ")"); }
                         if (bitmap == null && !isCancelled()) {
                             Context context = contextRef.get();
                             if (view != null && context != null && internetNotAvailable(context)) {
@@ -763,7 +778,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                             return;
                         }
                         if (view != null) {
-                            LOG_V("Loading into ImageView(" + imageFile + ")");
+                            if (BuildConfig.DEBUG) { LOG_V("Loading into ImageView(" + imageFile + ")"); }
                             view.setImageBitmap(bitmap);
                         }
                     } finally {
@@ -775,16 +790,41 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
                 @Override
                 protected void onCancelled(Bitmap b) {
-                    LOG_V("onCancelled(" + imageFile + ")");
+                    if (BuildConfig.DEBUG) { LOG_V("onCancelled(" + imageFile + ")"); }
                     onPostExecute(null);
                 }
             }
         }
     }
 
+    public static synchronized void deleteOldSavedFiles(File dir, long maxImages) {
+        File[] files = dir.listFiles(new FileFilter() {
+            @Override
+            public boolean accept(File file) {
+                return !file.isDirectory();
+            }
+        });
+        if (files != null && files.length > maxImages) {
+            if (BuildConfig.DEBUG) { LOG_V("Found " + files.length + " cached images"); }
+            Arrays.sort(files, new Comparator<File>() {
+                @Override
+                public int compare(File o1, File o2) {
+                    long diff = o1.lastModified() - o2.lastModified();
+                    if (diff < 0) return -1;
+                    else if (diff > 0) return 1;
+                    else return 0;
+                }
+            });
+
+            for (int i = 0; i < files.length - maxImages; i++) {
+                deleteFile(files[i]);
+            }
+        }
+    }
+
     public static void deleteFile(File file) {
         if (file.delete()) {
-            LOG_V("Deleted " + file);
+            if (BuildConfig.DEBUG) { LOG_V("Deleted " + file); }
         } else {
             Log.wtf(TAG, "Can't delete " + file);
         }
