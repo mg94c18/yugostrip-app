@@ -1,7 +1,6 @@
 package org.mg94c18.alanford;
 
 import android.content.Context;
-import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -88,18 +87,13 @@ public final class AssetLoader {
         return assetUpdateTimestamp;
     }
 
-    public static long getApkInstallTime(Context context) {
-        SharedPreferences preferences = context.getSharedPreferences(ASSET_PREFS_NAME, Context.MODE_PRIVATE);
-        long now = System.currentTimeMillis();
-        String installTimeKey = "installTime_" + BuildConfig.VERSION_CODE;
-        long assetTimestamp = preferences.getLong(installTimeKey, now);
-        if (assetTimestamp == now) {
-            if (now < TIME_TOO_MUCH_IN_PAST || now > TIME_TOO_MUCH_IN_FUTURE) {
-                return -1;
-            }
-            preferences.edit().putLong(installTimeKey, assetTimestamp).apply();
+    public static long getApkAssetTime(Context context) {
+        try {
+            return Long.parseLong(context.getResources().getString(R.string.apk_assets_time));
+        } catch (NumberFormatException nfe) {
+            Log.wtf(TAG, "Can't convert number", nfe);
+            return -1;
         }
-        return assetTimestamp;
     }
 
     public @NonNull static List<String> loadFromAssetOrUpdate(final Context context, final String assetName, final long syncIndex) {
@@ -113,7 +107,7 @@ public final class AssetLoader {
             if (BuildConfig.DEBUG) { LOG_V("Asset dir doesn't exist: " + assetDir); }
             return fromAsset;
         }
-        long assetTimestamp = getApkInstallTime(context);
+        long assetTimestamp = getApkAssetTime(context);
         if (assetTimestamp == -1) {
             if (BuildConfig.DEBUG) { LOG_V("Can't get APK install time"); }
             return fromAsset;

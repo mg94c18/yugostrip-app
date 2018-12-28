@@ -22,9 +22,6 @@ import org.mg94c18.alanford.R;
 
 import java.io.File;
 import java.io.FilenameFilter;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -208,9 +205,9 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
 
         if (BuildConfig.DEBUG) { LOG_V("Syncing asset updates into new folder: " + thisSyncDir); }
 
-        long apkInstallTime = AssetLoader.getApkInstallTime(context);
-        if (apkInstallTime == -1) {
-            Log.wtf(TAG, "Can't get APK install time");
+        long apkAssetTime = AssetLoader.getApkAssetTime(context);
+        if (apkAssetTime == -1) {
+            Log.wtf(TAG, "Can't get APK asset time");
             return false;
         }
 
@@ -241,7 +238,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             }
             assetUpdateLink = matcher.group(3);
 
-            if (apkAssets.contains(assetUpdateName) && apkInstallTime >= assetUpdateTime) {
+            if (apkAssets.contains(assetUpdateName) && apkAssetTime >= assetUpdateTime) {
                 if (BuildConfig.DEBUG) { LOG_V("Skipping asset " + assetUpdateName + " as it is already up to date"); }
                 continue;
             }
