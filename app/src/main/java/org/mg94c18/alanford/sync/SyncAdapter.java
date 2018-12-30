@@ -41,7 +41,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
     private static final String LAST_SYNC_INDEX = "lastSyncIndex";
     private static final String LAST_SYNC_APK_VERSION_CODE = "lastSyncVersionCode";
     // The authority for the sync adapter's content provider
-    private static final String AUTHORITY = "org.mg94c18.alanford.sync.StubProvider";
+    private static final String AUTHORITY = BuildConfig.APPLICATION_ID + ".sync.StubProvider";
 
     private static final long SECONDS_PER_DAY = 86400;
     private static final String UPDATES = "updates";
@@ -247,11 +247,11 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             destination = new File(thisSyncDir, assetUpdateName + "_" + assetUpdateTime);
             if (apkAssets.contains(assetUpdateName)) {
                 List<String> currentContent = AssetLoader.loadFromAsset(assetUpdateName, context.getAssets());
-                downloaded = DownloadAndSave.saveUrlDiffToFile(assetUpdateLink, currentContent, destination);
                 if (BuildConfig.DEBUG) { LOG_V("Saving diff for asset " + assetUpdateName); }
+                downloaded = DownloadAndSave.saveUrlDiffToFile(assetUpdateLink, currentContent, destination);
             } else {
-                downloaded = DownloadAndSave.saveUrlToFile(assetUpdateLink, destination);
                 if (BuildConfig.DEBUG) { LOG_V("Saving full asset " + assetUpdateName); }
+                downloaded = DownloadAndSave.saveUrlToFile(assetUpdateLink, destination);
             }
             if (!downloaded) {
                 Log.wtf(TAG, "Can't download update: " + assetUpdateLink + " for asset " + assetUpdateName);

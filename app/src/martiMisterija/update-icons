@@ -1,0 +1,8 @@
+#!/bin/sh
+for d in 48 72 96 114 144 192 512; do /Applications/Inkscape.app/Contents/Resources/bin/inkscape -e /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/martiMisterija/Icon$d.png -w $d -h $d /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/martiMisterija/Icon.svg; done
+
+cp Icon144.png res/drawable-xxhdpi/ic_launcher.png
+cp Icon192.png res/drawable-xxxhdpi/ic_launcher.png
+cp Icon48.png res/drawable-mdpi/ic_launcher.png
+cp Icon72.png res/drawable-hdpi/ic_launcher.png
+cp Icon96.png res/drawable-xhdpi/ic_launcher.png

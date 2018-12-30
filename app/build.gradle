@@ -3,11 +3,11 @@ apply plugin: 'com.android.application'
 android {
     compileSdkVersion 26
     defaultConfig {
-        applicationId 'org.mg94c18.alanford'
+        applicationId 'org.mg94c18'
         minSdkVersion 15
         targetSdkVersion 26
-        versionCode 314
-        versionName "3.14"
+        versionCode 3141
+        versionName "3.141" // Kada menjam ovo, treba da promenim i apk_assets_time za release i debug?
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -16,13 +16,15 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
     }
-    flavorDimensions "targetStore"
+    flavorDimensions "strip"
     productFlavors {
-        amazon {
-            dimension "targetStore"
+        martiMisterija {
+            dimension "strip"
+            applicationIdSuffix ".martimisterija"
         }
-        google {
-            dimension "targetStore"
+        alanFord {
+            dimension "strip"
+            applicationIdSuffix ".alanford"
         }
     }
 }

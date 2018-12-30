@@ -1,0 +1,115 @@
+1982    1                   001. Ljudi u crnom
+1982    2_3                 002. Osveta boga Ra
+1982    3                   003. Operacija Arka
+1982    4                   004. Prokleto pleme
+1982    4_5                 005. Strava u Providenceu
+1982    6_7                 006. Zločin u prapovijesti
+1982    7_9_a               007. Čovjek koji je otkrio Europu
+1982    7_9_b               008. Izvor mladosti
+1982    9_10_a              009. Bermudski trokut
+1982    9_10_b              010. Tajna "Lusitanije"
+1983    11_12_a             011. Lubanja sudbine
+1983    11_12_b             012. U sjeni Teotihuacana
+1983    13_14_a             013. Vampir u New Yorku
+1983    13_14_b             014. Prokletstvo
+1983    15_16_a             015. Mač kralja Arthura
+1983    15_16_b             016. Tajna Stonehengea
+1983    17_19_a             017. Grad prozirnih sjenki
+1983    17_19_b             018. Stvorenja iz bezdana
+1983    19_21_a             019. Užas u svemiru
+1983    19_21_b             020. Babilonska kula
+1983    21_22               021. Knjiga tajni
+1984    22_24_a             022. Tunguska!
+1984    22_24_b             023. Smrt u tajgi
+1984    24_26_a             024. Putovanje u budućnost
+1984    24_26_b             025. Povratak s drugog svijeta
+1984    24_26_c             026. Čelična neman
+1984    26_27               nov. Susreti bliske vrste; Djeca sna
+1984    27_28               027. Zločini Martina Mystèrea
+1984    28_30_a             028. Kristalna kugla
+1984    28_30_b             029. Treće oko
+1984    30_31_a             030. Vremenska komora
+1984    30_31_b             031. Stravična invanzija
+1984    31_32               032. Šumski čovjek
+1984    33                  033. Tothova knjiga
+1985    34_35               034. Misterij Nuraga
+1985    35_36_a             035. Moha - Moha
+1985    35_36_b             036. Povratak Kundingasa
+1985    36_38_a             037. Telepatija; Um koji ubija
+1985    36_38_b             038. Skeneri!
+1985    38_40               039. Vještičji Sabat; Panova frula
+1985    40_42_a             040. Reinkarnacija Annabel Lee
+1985    40_42_b             041. Idolova moć
+1985    42_43_a             042. Rapa Nui!
+1985    42_43_b             043. Bezvremenski rat
+1985    43_44               044. Mystery Land; Knez tame
+1985    44_46_a             045. Bijeli ugriz; Manastirska tajna
+1985    44_46_b             046. Gospodar oluja
+1986    46_48               047. Vatra koja ubija; Vrijeme nula
+1986    48_50_a             048. Kung fu ubojice
+1986    48_50_b             049. Krv u kineskoj četvrti
+1986    50_51_a             050. Druidov srp
+1986    50_51_b             051. Noć vukodlaka
+1986    51_52               052. Sedam ljudi niotkuda; Ludilo Martina Mystèrea
+1986    52_54               053. Dvorac strave; Frankenstein
+1986    54_55               054. Povratak u Liliput
+1986    55_56               055. Blago sedam gradova
+1986    55_58_a             056. Afrička magija
+1986    56_58_b             057. Buđenje dinosaura
+1986    56_58_c             058. Izgubljena dolina
+1987    58_60               059. Vatrena kiša; Tragovi Nazca
+1987    60_61_a             060. U zemlji Dogona
+1987    60_61_b             061. Genij zla
+1987    61_62               062. Nemogući uređaji; Četvrta dimenzija
+1987    62_64               063. Dani more; Operacija Dorian Gray
+1987    64_65_a             064. Duhovi na Manhattanu
+1987    64_65_b             065. Space invaders
+1987    66_67_a             066. Pretkazanje
+1987    66_67_b             067. Agarthi!
+1987    67_69               068. Lov na čovjeka; Gospodari rata
+1987    69_71_a             069. Prava priča o kapetanu Nemu
+1987    69_71_b             070. Prijetnja iz bezdana
+1988    71_72_a             071. Smrt u varijeteu
+1988    71_72_b             072. Čovjek koji je izmišljao viceve
+1988    73_74_a             073. Intriga u Pekingu
+1988    73_74_b             074. Vojska od Terakote
+1988    74_75               075. Tajna rudnika; Stvorenje s drugog svijeta
+1988    76_77_a             076. Narod malih ljudi
+1988    76_77_b             077. Kraljica patuljaka
+1988    77_79               078. Enigma zvana Jaspar; Čudo od djeteta
+1988    79_80_a             079. Besmrtna žena
+1988    79_80_b             080. Nepobjedivi uređaj
+1988    80_81               081. Elektronički virus; Santa claus 9000
+1988    81_83_a             082. Potopljena piramida; Sirenin pjev
+1988    81_83_b             083. Dan dupina
+1989    83_85               084. Zona X; Besmisleni univerzumi
+1989    85_86_a             085. Londonski misterij
+1989    85_86_b             086. Zemlja koja ne postoji
+1989    87_88               087. Snježni čovjek
+1989    88_90_a             088. Sekta asasina
+1989    88_90_b             089. Tajna templara
+1989    90_92_a             090. Kristoferovo srce
+1989    90_92_b             091. Smrtonosni san
+1989    92_93               092. Lov na vešticu
+1989    93_94_a             093. Božićna priča
+1990    94_96_a             094. Pogrešni proračun
+1990    94_96_b             095. Tajni život Serža Orlija
+1990    94_96_c             096. Vitez Orlando
+1990    97_98_a             097. Mutanti
+1990    97_98_b             098. Holokaust
+1990    98_99               099. Užas u Karnaku; Crna piramida
+1990    100                 100. O svim bojama
+1990    101_102_a           101. Osmeh iz prošlosti
+1990    101_102_b           102. Operacija Mona Liza
+1990    103                 103. Nekromikon
+1990    104_106_a           104. Egipćanin Mozes
+1990    104_106_b           105. Armagedon
+1990    104_106_c           106. Zavetni kovčeg
+1991    106_108_a           107a. Kunandžunova kletva; Zemlja snova
+1991    106_108_b           108. Osveta mister Džinksa
+1991    107bis              107b. Mašina ludila
+1991    109_111_a           109. Otrovni okean
+1991    109_111_b           110. Otok vjetra
+1991    111_113_a           111. Javina prošlost
+1991    111_113_b           112. Allan Quatermain
+1991    111_113_c           113. Java protiv Jave

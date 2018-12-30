@@ -4,9 +4,6 @@
     <item android:id="@+id/action_email"
         android:title="Pitanja i problemi"
         app:showAsAction="never" />
-    <item android:id="@+id/action_episodes"
-        android:title="Spisak epizoda"
-        app:showAsAction="never"/>
     <item android:id="@+id/go_to_page"
         android:title="Idi na stranu..."
         app:showAsAction="never"/>
@@ -24,5 +21,6 @@
     <item android:id="@+id/search"
         android:title="Nađi..."
         app:showAsAction="never"
+        android:visible="false"
         app:actionViewClass="android.widget.SearchView" />
 </menu>

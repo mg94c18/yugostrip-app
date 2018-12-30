@@ -11,6 +11,7 @@ import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -18,9 +19,9 @@ import java.util.Set;
 import static org.mg94c18.alanford.Logger.LOG_V;
 
 public class SearchProvider extends ContentProvider {
-    public static List<String> TITLES;
-    public static List<String> NUMBERS;
-    public static List<String> DATES;
+    public static List<String> TITLES = Collections.emptyList();
+    public static List<String> NUMBERS = Collections.emptyList();
+    public static List<String> DATES = Collections.emptyList();
 
     private static String[] MANDATORY_COLUMNS = {
             BaseColumns._ID,

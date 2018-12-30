@@ -16,7 +16,7 @@ import static org.mg94c18.alanford.Logger.TAG;
 public class DummyAccount {
     // Constants
     // An account type, in the form of a domain name
-    private static final String ACCOUNT_TYPE = "org.mg94c18.alanford";
+    private static final String ACCOUNT_TYPE = BuildConfig.APPLICATION_ID;
     private static final String PREF_ACCOUNT_NAME = "accountName";
 
     /**
