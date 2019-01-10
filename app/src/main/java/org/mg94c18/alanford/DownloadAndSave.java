@@ -97,6 +97,7 @@ public class DownloadAndSave {
             fileOutputStream.close();
             return true;
         } catch (IOException e) {
+            Log.e(TAG, "Can't saveUrlToFile", e);
             if (file.exists()) {
                 MainActivity.deleteFile(file);
             }

@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Alan Ford</string>
-
     <string name="apk_assets_time">1545974379000</string>
 
     <string name="sync_account_type">org.mg94c18.alanford</string>

@@ -6,6 +6,7 @@ import android.content.ContentValues;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
+import android.os.Build;
 import android.provider.BaseColumns;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -22,6 +23,8 @@ public class SearchProvider extends ContentProvider {
     public static List<String> TITLES = Collections.emptyList();
     public static List<String> NUMBERS = Collections.emptyList();
     public static List<String> DATES = Collections.emptyList();
+
+    public static final boolean ALLOW_MANUAL_SYNC = BuildConfig.DEBUG || "Amazon".equals(Build.MANUFACTURER);
 
     private static String[] MANDATORY_COLUMNS = {
             BaseColumns._ID,
@@ -85,7 +88,7 @@ public class SearchProvider extends ContentProvider {
             }
         }
 
-        if (BuildConfig.DEBUG) {
+        if (ALLOW_MANUAL_SYNC) {
             if (resultCount == 0 && query.equals("sync")) {
                 MatrixCursor.RowBuilder builder = cursor.newRow();
                 builder.add(0); // BaseColumns._ID

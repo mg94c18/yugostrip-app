@@ -134,9 +134,9 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
 
         syncResult.clear();
         try {
-            if (BuildConfig.DEBUG) { LOG_V("Syncing"); }
+            Log.i(TAG, "Syncing");
             boolean success = performSync(context);
-            if (BuildConfig.DEBUG) { LOG_V("performSync() returned " + success); }
+            Log.i(TAG, "performSync() returned " + success);
 
             if (success) {
                 SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);

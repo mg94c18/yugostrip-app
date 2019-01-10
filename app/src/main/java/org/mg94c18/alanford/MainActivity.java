@@ -13,6 +13,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
@@ -168,12 +169,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             return false;
         }
 
-        if (BuildConfig.DEBUG) {
-            if (epizodeStr.equals("sync")) {
-                LOG_V("Sync intent");
-                SyncAdapter.requestSyncNow(this);
-                return true;
-            }
+        if (SearchProvider.ALLOW_MANUAL_SYNC && epizodeStr.equals("sync")) {
+            if (BuildConfig.DEBUG) { LOG_V("Sync intent"); }
+            SyncAdapter.requestSyncNow(this);
+            return true;
         }
 
         int episode;

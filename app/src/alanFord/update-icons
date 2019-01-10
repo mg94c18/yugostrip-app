@@ -1,5 +1,5 @@
 #!/bin/sh
-for d in 48 72 96 114 144 192 512; do /Applications/Inkscape.app/Contents/Resources/bin/inkscape -e /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/google/Icon$d.png -w $d -h $d /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/google/Icon.svg; done
+for d in 48 72 96 114 144 192 512; do /Applications/Inkscape.app/Contents/Resources/bin/inkscape -e /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/alanFord/Icon$d.png -w $d -h $d /Users/sstevano/Documents/my/src/Workspace/ViewPagerTest/app/src/alanFord/Icon.svg; done
 
 cp Icon144.png res/drawable-xxhdpi/ic_launcher.png
 cp Icon192.png res/drawable-xxxhdpi/ic_launcher.png

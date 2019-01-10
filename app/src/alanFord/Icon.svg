@@ -79,9 +79,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="22.627417"
-     inkscape:cx="19.222615"
-     inkscape:cy="19.924517"
+     inkscape:zoom="11.313708"
+     inkscape:cx="12.346252"
+     inkscape:cy="13.022645"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -150,31 +150,14 @@
     <text
        xml:space="preserve"
        style="font-style:normal;font-weight:normal;font-size:10px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#ffffff;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="5.2244883"
-       y="1031.241"
+       x="1.8102748"
+       y="1044.3571"
        id="text3394"
        sodipodi:linespacing="125%"><tspan
          sodipodi:role="line"
-         id="tspan3396"
-         x="5.2244883"
-         y="1031.241"
-         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';fill:#ffffff;fill-opacity:1">alan</tspan><tspan
-         sodipodi:role="line"
-         x="5.2244883"
-         y="1040.616"
-         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1"
-         id="tspan4167">ford</tspan></text>
-    <text
-       xml:space="preserve"
-       style="font-style:normal;font-weight:normal;font-size:10px;line-height:125%;font-family:sans-serif;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-       x="14.117372"
-       y="1049.1412"
-       id="text4171"
-       sodipodi:linespacing="125%"><tspan
-         sodipodi:role="line"
-         id="tspan4173"
-         x="14.117372"
-         y="1049.1412"
-         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:7.5px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold';text-align:center;text-anchor:middle">425</tspan></text>
+         x="1.8102748"
+         y="1044.3571"
+         style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:20px;font-family:sans-serif;-inkscape-font-specification:'sans-serif Bold Italic';text-align:start;text-anchor:start;fill:#ffffff;fill-opacity:1"
+         id="tspan4167">af</tspan></text>
   </g>
 </svg>
