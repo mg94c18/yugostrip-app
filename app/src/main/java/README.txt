@@ -21,4 +21,5 @@ Deploy:
     MOVE 421.gz, ..., 440.gz from Debug to Release
     COPY updates.gz from Debug to Release
 Sledeći put:
+    MOVE updates.gz sa NOVIM titles.gz, numbers.gz, dates.gz from release to rollback
     NOVI updates.gz sa NOVIM titles.gz, numbers.gz, dates.gz

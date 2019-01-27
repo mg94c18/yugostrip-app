@@ -156,6 +156,7 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
     private void closeProgressDialog() {
         if (BuildConfig.DEBUG) { LOG_V("closeProgressDialog"); }
         if (progressDialog != null) {
+            Unutar ovog ima crash
             progressDialog.cancel();
             progressDialog.dismiss();
             progressDialog = null;
