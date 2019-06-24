@@ -110,7 +110,7 @@ public class DownloadAndSave {
         }
     }
 
-    public static String fileNameFromLink(String link, String episodeId, int page) {
+    public @NonNull static String fileNameFromLink(String link, String episodeId, int page) {
         String extension = link.trim().endsWith(PNG_SUFFIX) ? "png" : "jpg";
         return String.format(Locale.US, "%s_%03d.%s", episodeId, page, extension);
     }

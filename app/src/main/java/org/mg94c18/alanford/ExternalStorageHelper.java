@@ -4,8 +4,12 @@ import android.annotation.TargetApi;
 import android.content.Context;
 import android.os.Build;
 import android.os.Environment;
+import android.support.annotation.NonNull;
+import android.util.Log;
 
 import java.io.File;
+
+import static org.mg94c18.alanford.Logger.TAG;
 
 public class ExternalStorageHelper {
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)
@@ -26,4 +30,25 @@ public class ExternalStorageHelper {
 
         return null;
     }
+
+    public static File getInternalOfflineDir(@NonNull Context context) {
+        File offlineDir = new File(context.getCacheDir(), MainActivity.INTERNAL_OFFLINE);
+        if (!offlineDir.exists()) {
+            boolean success = offlineDir.mkdir();
+            if (!success) {
+                Log.wtf(TAG, "Can't create dir");
+                // proceed and hope that mkdir() lied... if it fails we'll fail for the user
+            }
+        }
+        return offlineDir;
+    }
+
+    public static File getAvailableCacheDir(@NonNull Context context) {
+        File dir = getExternalCacheDir(context);
+        if (dir != null) {
+            return dir;
+        }
+        return getInternalOfflineDir(context);
+    }
+
 }

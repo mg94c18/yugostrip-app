@@ -114,26 +114,30 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
         if (fileLimit > -1) {
             MainActivity.deleteOldSavedFiles(cacheDir, fileLimit);
         }
+        Activity activity;
+        String filename;
+        File file;
+        Bitmap bitmap;
         for (int i = 0; i < links.size() && !isCancelled(); i++) {
             if (BuildConfig.DEBUG) { LOG_V("publishProgress(" + i + ")"); }
             publishProgress(i);
 
-            final Activity activity = activityRef.get();
+            activity = activityRef.get();
             if (activity == null) {
                 return null;
             }
 
-            String filename = DownloadAndSave.fileNameFromLink(links.get(i), episodeId, i);
+            filename = DownloadAndSave.fileNameFromLink(links.get(i), episodeId, i);
             if (cacheDir == null) {
                 return null;
             }
-            File file = new File(cacheDir, filename);
+            file = new File(cacheDir, filename);
             if (file.exists()) {
                 if (BuildConfig.DEBUG) { LOG_V(filename + " already exists"); }
                 continue;
             }
             if (BuildConfig.DEBUG) { LOG_V("Downloading " + filename); }
-            Bitmap bitmap = DownloadAndSave.downloadAndSave(links.get(i), file, 0, 0);
+            bitmap = DownloadAndSave.downloadAndSave(links.get(i), file, 0, 0);
             if (bitmap == null) {
                 return Boolean.FALSE;
             }
@@ -156,7 +160,6 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
     private void closeProgressDialog() {
         if (BuildConfig.DEBUG) { LOG_V("closeProgressDialog"); }
         if (progressDialog != null) {
-            Unutar ovog ima crash
             progressDialog.cancel();
             progressDialog.dismiss();
             progressDialog = null;
