@@ -7,6 +7,7 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.SyncResult;
+import android.graphics.Bitmap;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -17,6 +18,7 @@ import android.webkit.URLUtil;
 import org.mg94c18.alanford.AssetLoader;
 import org.mg94c18.alanford.BuildConfig;
 import org.mg94c18.alanford.DownloadAndSave;
+import org.mg94c18.alanford.ExternalStorageHelper;
 import org.mg94c18.alanford.MainActivity;
 import org.mg94c18.alanford.R;
 
@@ -44,10 +46,28 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
     private static final String AUTHORITY = BuildConfig.APPLICATION_ID + ".sync.StubProvider";
 
     private static final long SECONDS_PER_DAY = 86400;
+    private static final long SECONDS_PER_HOUR = SECONDS_PER_DAY / 24;
     private static final String UPDATES = "updates";
+    private static final String NUMBER_TO_SYNC = "numberToSync";
+    private static final int PAGES_PER_SYNC = 150;
     private static long lastAcquiredIndex = -1;
+    private static final String FLAG_HOURLY = "hourly";
 
-    public static void setPeriodicSync(Context context) {
+    public static void setDailySync(Context context) {
+        setSync(context, Bundle.EMPTY, SECONDS_PER_DAY);
+    }
+
+    public static void setHourlySync(Context context) {
+        setSync(context, getHourlyBundle(), SECONDS_PER_HOUR);
+    }
+
+    private static Bundle getHourlyBundle() {
+        Bundle bundle = new Bundle();
+        bundle.putBoolean(FLAG_HOURLY, true);
+        return bundle;
+    }
+
+    private static void setSync(Context context, Bundle bundle, long period) {
         Account account = DummyAccount.getSyncAccount(context);
         if (account == null) {
             Log.wtf(TAG, "Null sync account");
@@ -55,8 +75,8 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         }
         if (BuildConfig.DEBUG) { LOG_V("Sync account=" + account.name); }
         ContentResolver.setSyncAutomatically(account, AUTHORITY, true);
-        ContentResolver.addPeriodicSync(account, AUTHORITY, Bundle.EMPTY, SECONDS_PER_DAY);
-        if (BuildConfig.DEBUG) { LOG_V("Configured periodic sync"); }
+        ContentResolver.addPeriodicSync(account, AUTHORITY, bundle, period);
+        if (BuildConfig.DEBUG) { LOG_V("Configured periodic sync (" + period + ")"); }
     }
 
     public static void requestSyncNow(Context context) {
@@ -92,6 +112,16 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             boolean autoInitialize,
             boolean allowParallelSyncs) {
         super(context, autoInitialize, allowParallelSyncs);
+    }
+
+    public static void cancelHourlySync(Context context) {
+        if (BuildConfig.DEBUG) { LOG_V("cancelHourlySync"); }
+        Account account = DummyAccount.getSyncAccount(context);
+        if (account == null) {
+            Log.wtf(TAG, "Can't get account");
+            return;
+        }
+        ContentResolver.removePeriodicSync(account, AUTHORITY, getHourlyBundle());
     }
 
     /*
@@ -135,15 +165,19 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         syncResult.clear();
         try {
             Log.i(TAG, "Syncing");
-            boolean success = performSync(context);
+            boolean hourly = extras != null && extras.getBoolean(FLAG_HOURLY, false);
+            boolean success = hourly ? performHourlySync(context) : performSync(context);
             Log.i(TAG, "performSync() returned " + success);
 
             if (success) {
                 SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
-                success = preferences.edit()
-                        .putLong(LAST_SYNC_TIME, System.currentTimeMillis())
-                        .putInt(LAST_SYNC_APK_VERSION_CODE, BuildConfig.VERSION_CODE)
-                        .commit();
+                if (hourly) {
+                } else {
+                    success = preferences.edit()
+                            .putLong(LAST_SYNC_TIME, System.currentTimeMillis())
+                            .putInt(LAST_SYNC_APK_VERSION_CODE, BuildConfig.VERSION_CODE)
+                            .commit();
+                }
             }
 
             if (!success) {
@@ -155,6 +189,71 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         } finally {
             syncResult.stats.numUpdates++;
         }
+    }
+
+    private boolean performHourlySync(@NonNull Context context) {
+        if (BuildConfig.DEBUG) { LOG_V("performHourlySync"); }
+        long syncIndex = acquireSyncIndex(context);
+        List<String> numbers = AssetLoader.loadFromAssetOrUpdate(context, AssetLoader.NUMBERS, syncIndex);
+        if (numbers.isEmpty()) {
+            Log.wtf(TAG, "Can't load list of numbers");
+            return false;
+        }
+
+        SharedPreferences preferences = context.getSharedPreferences(SHARED_PREFS_NAME, Context.MODE_PRIVATE);
+        String numberToSync = preferences.getString(NUMBER_TO_SYNC, numbers.get(0));
+        int startIndex = numbers.indexOf(numberToSync);
+        if (startIndex == -1) {
+            Log.wtf(TAG, "Unexpected number not present in assets: " + numberToSync);
+            preferences.edit().remove(NUMBER_TO_SYNC).apply();
+            return false;
+        }
+
+        File dir = ExternalStorageHelper.getAvailableCacheDir(context);
+        if (dir == null) {
+            Log.wtf(TAG, "Can't get destination cache dir");
+            return false;
+        }
+        List<String> links;
+        String filename;
+        File file;
+        Bitmap bitmap;
+        int downloadedCount = 0;
+        int index = startIndex;
+        do {
+            links = AssetLoader.loadFromAssetOrUpdate(context, numberToSync, syncIndex);
+            for (int i = 0; i < links.size(); i++) {
+                filename = DownloadAndSave.fileNameFromLink(links.get(i), numberToSync, i);
+                file = new File(dir, filename);
+                if (file.exists()) {
+                    if (BuildConfig.DEBUG) {
+                        LOG_V(filename + " already exists");
+                    }
+                    continue;
+                }
+                if (BuildConfig.DEBUG) {
+                    LOG_V("Downloading " + filename);
+                }
+                bitmap = DownloadAndSave.downloadAndSave(links.get(i), file, 0, 0);
+                if (bitmap == null) {
+                    // TODO: save numberToSync (or not)
+                    return false;
+                } else {
+                    downloadedCount++;
+                }
+            }
+            index = (index + 1) % numbers.size();
+            numberToSync = numbers.get(index);
+        } while (downloadedCount < PAGES_PER_SYNC && index != startIndex);
+
+        preferences.edit().putString(NUMBER_TO_SYNC, numberToSync).apply();
+
+        if (index == startIndex) {
+            if (BuildConfig.DEBUG) { LOG_V("Downloaded all of it :)"); }
+            preferences.edit().remove(MainActivity.TOTAL_DOWNLOAD_OPTION).apply();
+            cancelHourlySync(context);
+        }
+        return true;
     }
 
     private boolean performSync(@NonNull Context context) {

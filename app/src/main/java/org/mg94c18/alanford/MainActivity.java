@@ -13,7 +13,6 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
-import android.os.Build;
 import android.os.Environment;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
@@ -78,7 +77,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static final String CONTACT_EMAIL = "yckopo@gmail.com";
     private static final String MY_ACTION_VIEW = BuildConfig.APPLICATION_ID + ".VIEW";
     private static final String INTERNET_PROBLEM = "Internet Problem";
-    private static final String INTERNAL_OFFLINE = "offline";
+    public static final String INTERNAL_OFFLINE = "offline";
+    public static final String TOTAL_DOWNLOAD_OPTION = "totalDownloadOption";
 
     ViewPager viewPager;
     MyPagerAdapter pagerAdapter;
@@ -93,8 +93,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     String selectedEpisodeNumber;
     EpisodeDownloadTask downloadTask;
     AlertDialog pagePickerDialog;
+    AlertDialog totalDownloadDialog;
+    TotalDownloadOption totalDownloadOption = TotalDownloadOption.MODAL_DIALOG;
     static long syncIndex;
     ActionBarDrawerToggle drawerToggle;
+
+    enum TotalDownloadOption {
+        SYNC_ADAPTER,
+        MODAL_DIALOG
+    }
 
     private static int normalizePageIndex(int i, int max) {
         if (i < 0) {
@@ -316,18 +323,25 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             downloadTask.cancel(true);
             downloadTask = null;
         }
-        dismissPagePickerDialog();
+        dismissAlertDialogs();
         saveCurrentPage(viewPager.getCurrentItem());
 
-        SyncAdapter.setPeriodicSync(this);
+        SyncAdapter.setDailySync(this);
+        if (totalDownloadOption == TotalDownloadOption.SYNC_ADAPTER) {
+            SyncAdapter.setHourlySync(this);
+        }
     }
 
-    private void dismissPagePickerDialog() {
-        if (pagePickerDialog != null) {
-            pagePickerDialog.cancel();
-            pagePickerDialog.dismiss();
-            pagePickerDialog = null;
+    private void dismissAlertDialogs() {
+        AlertDialog[] dialogs = {pagePickerDialog, totalDownloadDialog};
+        for (AlertDialog dialog : dialogs) {
+            if (dialog != null) {
+                dialog.cancel();
+                dialog.dismiss();
+            }
         }
+        pagePickerDialog = null;
+        totalDownloadDialog = null;
     }
 
     @Override
@@ -356,6 +370,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         return super.onCreateOptionsMenu(menu);
     }
 
+    private void readTotalDownloadOption() {
+        String totalDownloadPref = getSharedPreferences().getString(TOTAL_DOWNLOAD_OPTION, null);
+        if (TotalDownloadOption.SYNC_ADAPTER.toString().equals(totalDownloadPref)) {
+            totalDownloadOption = TotalDownloadOption.SYNC_ADAPTER;
+        } else {
+            totalDownloadOption = TotalDownloadOption.MODAL_DIALOG;
+        }
+    }
+
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
         if (BuildConfig.DEBUG) { LOG_V("onPrepareOptionsMenu"); }
@@ -363,6 +386,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         ActionBar actionBar = getSupportActionBar();
         if (assetsLoaded && actionBar != null) {
             menu.findItem(R.id.search).setVisible(true);
+            readTotalDownloadOption();
+            menu.findItem(R.id.action_total_download).setVisible(true);
 
             actionBar.setHomeButtonEnabled(true);
             actionBar.setDisplayHomeAsUpEnabled(true);
@@ -429,14 +454,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     Toast.makeText(this, INTERNET_PROBLEM, Toast.LENGTH_LONG).show();
                     return true;
                 }
-                File offlineDir = new File(getCacheDir(), INTERNAL_OFFLINE);
-                if (!offlineDir.exists()) {
-                    boolean success = offlineDir.mkdir();
-                    if (!success) {
-                        Log.wtf(TAG, "Can't create dir");
-                        // proceed and hope that mkdir() lied... if it fails we'll fail for the user
-                    }
-                }
+                File offlineDir = ExternalStorageHelper.getInternalOfflineDir(this);
                 downloadTask = new EpisodeDownloadTask(MAX_DOWNLOADED_IMAGES_INTERNAL_OFFLINE,this, pagerAdapter.episode, pagerAdapter.links, selectedEpisodeTitle, offlineDir, EpisodeDownloadTask.Destination.INTERNAL_MEMORY);
                 downloadTask.execute();
                 return true;
@@ -454,13 +472,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                             public boolean onEditorAction(TextView textView, int actionId, KeyEvent keyEvent) {
                                 if (actionId == EditorInfo.IME_ACTION_DONE || (keyEvent != null && keyEvent.getKeyCode() == KeyEvent.KEYCODE_ENTER)) {
                                     String numberString = textView.getText().toString();
-                                    dismissPagePickerDialog();
+                                    dismissAlertDialogs();
                                     tryGoingToPage(numberString);
                                 }
                                 return false;
                             }
                         });
-                dismissPagePickerDialog();
+                dismissAlertDialogs();
                 input.setInputType(InputType.TYPE_CLASS_NUMBER);
                 pagePickerDialog = new AlertDialog.Builder(this)
                         .setCancelable(true)
@@ -481,6 +499,34 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 if (BuildConfig.DEBUG) { LOG_V("Search requested"); }
                 onSearchRequested();
                 return true;
+            case R.id.action_total_download:
+                if (BuildConfig.DEBUG) { LOG_V("Total Download"); }
+                dismissAlertDialogs();
+                String message = "";
+                if (totalDownloadOption == TotalDownloadOption.SYNC_ADAPTER) {
+                    message = "Download je trenutno uključen i aktivira se kad ne koristite uređaj.";
+                }
+                totalDownloadDialog = new AlertDialog.Builder(this)
+                        .setCancelable(true)
+                        .setTitle(getResources().getString(R.string.total_download_text) + " (OPREZ: cela kolekcija je oko 15GB)!")
+                        .setMessage(".  Izaberite download opciju.")
+                        .setNegativeButton(R.string.total_download_option_sync, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                startTotalDownload(TotalDownloadOption.SYNC_ADAPTER);
+                            }
+                        })
+                        .setPositiveButton(R.string.total_download_option_modal, new DialogInterface.OnClickListener() {
+                            @Override
+                            public void onClick(DialogInterface dialogInterface, int i) {
+                                startTotalDownload(TotalDownloadOption.MODAL_DIALOG);
+                            }
+                        })
+                        //.setNegativeButton(R.string.total_download_option_back, null)
+                        .create();
+                totalDownloadDialog.setCanceledOnTouchOutside(false);
+                totalDownloadDialog.show();
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
@@ -495,6 +541,28 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         } catch (NumberFormatException nfe) {
             Log.wtf("Invalid input", nfe);
         }
+    }
+
+    private void startTotalDownload(TotalDownloadOption selectedOption) {
+        if (BuildConfig.DEBUG) { LOG_V("startTotalDownload: " + selectedOption); }
+        // TODO: ugasiti prethodno po potrebi
+        if (selectedOption == TotalDownloadOption.MODAL_DIALOG && totalDownloadOption == TotalDownloadOption.SYNC_ADAPTER) {
+            SyncAdapter.cancelHourlySync(this);
+            getSharedPreferences().edit().remove(TOTAL_DOWNLOAD_OPTION).apply();
+        } else if (selectedOption == TotalDownloadOption.SYNC_ADAPTER) {
+            SyncAdapter.setHourlySync(this);
+        }
+        totalDownloadOption = selectedOption;
+        getSharedPreferences().edit().putString(TOTAL_DOWNLOAD_OPTION, totalDownloadOption.toString()).apply();
+        switch (totalDownloadOption) {
+            case SYNC_ADAPTER:
+            case MODAL_DIALOG:
+                break;
+        }
+    }
+
+    SharedPreferences getSharedPreferences() {
+        return getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
     }
 
     @Override

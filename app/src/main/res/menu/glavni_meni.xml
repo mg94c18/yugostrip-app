@@ -23,4 +23,9 @@
         app:showAsAction="never"
         android:visible="false"
         app:actionViewClass="android.widget.SearchView" />
+    <item android:id="@+id/action_total_download"
+        android:title="@string/total_download_text"
+        app:showAsAction="never"
+        android:visible="false"
+        app:actionViewClass="android.widget.SearchView" />
 </menu>
