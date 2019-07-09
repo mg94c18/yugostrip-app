@@ -20,7 +20,6 @@ import org.mg94c18.alanford.DownloadAndSave;
 import org.mg94c18.alanford.EpisodeDownloadTask;
 import org.mg94c18.alanford.ExternalStorageHelper;
 import org.mg94c18.alanford.MainActivity;
-import org.mg94c18.alanford.R;
 
 import java.io.File;
 import java.io.FilenameFilter;
@@ -29,6 +28,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -46,6 +46,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
     private static final String LAST_SYNC_TIME = "lastSyncTime";
     private static final String LAST_SYNC_INDEX = "lastSyncIndex";
     private static final String LAST_SYNC_APK_VERSION_CODE = "lastSyncVersionCode";
+    private static final String SYNC_SLOT = "syncSlot";
     // The authority for the sync adapter's content provider
     private static final String AUTHORITY = BuildConfig.APPLICATION_ID + ".sync.StubProvider";
 
@@ -190,8 +191,31 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             return false;
         }
 
+        List<String> syncUrls = AssetLoader.loadFromAsset(AssetLoader.SYNC_URLS, context.getAssets());
+        if (syncUrls.isEmpty()) {
+            Log.wtf(TAG, "Can't load sync URLs");
+            return false;
+        }
+        final int mySyncSlot;
+        if (preferences.contains(SYNC_SLOT)) {
+            mySyncSlot = preferences.getInt(SYNC_SLOT, -1);
+            if (mySyncSlot == -1) {
+                Log.wtf(TAG, "Can't load slot although it exists");
+                return false;
+            }
+            if (mySyncSlot < 0 || mySyncSlot >= syncUrls.size()) {
+                Log.wtf(TAG, "Invalid slot: " + mySyncSlot);
+                return false;
+            }
+        } else {
+            mySyncSlot = new Random().nextInt(syncUrls.size());
+            if (!preferences.edit().putInt(SYNC_SLOT, mySyncSlot).commit()) {
+                Log.wtf(TAG, "Can't save sync slot");
+                return false;
+            }
+        }
         File thisSyncUpdates = new File(thisSyncDir, UPDATES);
-        boolean downloaded = DownloadAndSave.saveUrlToFile(context.getResources().getString(R.string.sync_url), thisSyncUpdates);
+        boolean downloaded = DownloadAndSave.saveUrlToFile(syncUrls.get(mySyncSlot), thisSyncUpdates);
         if (!downloaded) {
             if (BuildConfig.DEBUG) { LOG_V("Can't save master link"); }
             return false;

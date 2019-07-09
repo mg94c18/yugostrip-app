@@ -32,6 +32,7 @@ public final class AssetLoader {
     public static final String HIDDEN_TITLES = "hiddenTitles";
     public static final String HIDDEN_NUMBERS = "hiddenNumbers";
     public static final String HIDDEN_MATCHES = "hiddenMatches";
+    public static final String SYNC_URLS = "syncUrls";
 
     // Pokriva jedan strip, a ako je *4 onda pokriva sve epizode
     private static final int CAPACITY = 128;
