@@ -8,7 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
-public class GoogleBitmapHelper {
+class GoogleBitmapHelper {
     private static int calculateInSampleSize(BitmapFactory.Options options, int reqWidth, int reqHeight) {
         // Raw height and width of image
         final int height = options.outHeight;
@@ -44,7 +44,7 @@ public class GoogleBitmapHelper {
      * @return the scaled bitmap from the input stream
      * @throws IOException in case reading from the stream or writing to file fails
      */
-    public static Bitmap decodeSampledBitmapFromStream(InputStream inputStream, int reqWidth, int reqHeight, File tempFile) throws IOException {
+    static Bitmap decodeSampledBitmapFromStream(InputStream inputStream, int reqWidth, int reqHeight, File tempFile) throws IOException {
         FileOutputStream fileOutputStream = null;
 
         try {

@@ -3,6 +3,7 @@ package org.mg94c18.alanford;
 import android.app.SearchManager;
 import android.content.ContentProvider;
 import android.content.ContentValues;
+import android.content.Context;
 import android.database.Cursor;
 import android.database.MatrixCursor;
 import android.net.Uri;
@@ -23,6 +24,9 @@ public class SearchProvider extends ContentProvider {
     public static List<String> TITLES = Collections.emptyList();
     public static List<String> NUMBERS = Collections.emptyList();
     public static List<String> DATES = Collections.emptyList();
+    public static List<String> HIDDEN_TITLES = Collections.emptyList();
+    public static List<String> HIDDEN_NUMBERS = Collections.emptyList();
+    public static List<String> HIDDEN_MATCHES = Collections.emptyList();
 
     public static final boolean ALLOW_MANUAL_SYNC = BuildConfig.DEBUG || "Amazon".equals(Build.MANUFACTURER);
 
@@ -41,9 +45,13 @@ public class SearchProvider extends ContentProvider {
     @Nullable
     @Override
     public Cursor query(@NonNull Uri uri, @Nullable String[] strings, @Nullable String s, @Nullable String[] strings1, @Nullable String s1) {
+        MatrixCursor cursor = new MatrixCursor(MANDATORY_COLUMNS);
+        if (uri.getLastPathSegment() == null) {
+            return cursor;
+        }
+
         String query = uri.getLastPathSegment().toLowerCase();
         if (BuildConfig.DEBUG) { LOG_V("query(" + query + ")"); }
-        MatrixCursor cursor = new MatrixCursor(MANDATORY_COLUMNS);
 
         Set<String> querySet = new HashSet<>();
         querySet.add(query);
@@ -98,7 +106,38 @@ public class SearchProvider extends ContentProvider {
             }
         }
 
+        if (resultCount == 0) {
+            tryAddingHiddenResults(querySet, cursor);
+        }
+
         return cursor;
+    }
+
+    private void tryAddingHiddenResults(Set<String> querySet, MatrixCursor cursor) {
+        Context context = getContext();
+        if (context == null) {
+            return;
+        }
+        if (MainActivity.internetNotAvailable(context)) {
+            return;
+        }
+
+        for (int i = 0; i < HIDDEN_MATCHES.size(); i++) {
+            boolean addThis = false;
+            for (String query : querySet) {
+                if (HIDDEN_MATCHES.get(i).contains(":" + query + ":")) {
+                    addThis = true;
+                    break;
+                }
+            }
+            if (addThis) {
+                MatrixCursor.RowBuilder builder = cursor.newRow();
+                builder.add(i); // BaseColumns._ID
+                builder.add(HIDDEN_TITLES.get(i)); // SearchManager.SUGGEST_COLUMN_TEXT_1
+                builder.add(HIDDEN_NUMBERS.get(i)); // SearchManager.SUGGEST_COLUMN_TEXT_2
+                builder.add(Integer.toString(-1 * (i + 1))); // SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA
+            }
+        }
     }
 
     @Nullable

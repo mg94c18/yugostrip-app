@@ -5,38 +5,46 @@ import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.graphics.Bitmap;
 import android.os.AsyncTask;
+import android.support.annotation.NonNull;
+import android.util.Log;
 import android.view.WindowManager;
 import android.widget.Toast;
 
 import static org.mg94c18.alanford.Logger.LOG_V;
+import static org.mg94c18.alanford.Logger.TAG;
 
 import java.io.File;
+import java.io.FilenameFilter;
 import java.lang.ref.WeakReference;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> implements DialogInterface.OnCancelListener {
-    private WeakReference<Activity> activityRef;
+    private WeakReference<MainActivity> activityRef;
     private ProgressDialog progressDialog;
-    private List<String> links;
-    private String title;
-    private String episodeId;
+    private List<Integer> episodeIds;
     private File cacheDir;
     private Destination destination;
-    private long fileLimit;
+    private List<String> episodesToDelete;
+    private int currentEpisode;
+    private int currentEpisodePageCount;
+    private static final String DOWNLOADED_MARK_SUFFIX = ".success.txt";
+    private static final String DOWNLOADED_MARK_FOLDER = "completed";
 
     enum Destination {
         INTERNAL_MEMORY,
         SD_CARD
     }
 
-    EpisodeDownloadTask(long fileLimit, Activity activity, String episodeId, List<String> links, String title, File cacheDir, Destination destination) {
+    EpisodeDownloadTask(List<String> episodesToDelete, MainActivity activity, List<Integer> episodeIds, File cacheDir, Destination destination) {
         this.activityRef = new WeakReference<>(activity);
-        this.links = links;
-        this.title = title;
-        this.episodeId = episodeId;
+        this.episodeIds = episodeIds;
         this.cacheDir = cacheDir;
         this.destination = destination;
-        this.fileLimit = fileLimit;
+        this.episodesToDelete = episodesToDelete;
+        this.currentEpisode = -1;
     }
 
     private void keepScreenOn(boolean on) {
@@ -68,21 +76,10 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
         if (BuildConfig.DEBUG) { LOG_V("onPreExecute"); }
         progressDialog = new ProgressDialog(activity);
         progressDialog.setTitle("Malo strpljenja...");
-
-        String message = "Snimam '" + title + "' na " + getDestinationName(destination);
-        if (destination == Destination.SD_CARD) {
-            int index = cacheDir.getAbsolutePath().indexOf("Android/data");
-            if (index != -1) {
-                message = message + " (" + cacheDir.getAbsolutePath().substring(index) + ")";
-            }
-        }
-        message = message + ".";
-        progressDialog.setMessage(message);
+        progressDialog.setMessage("Snimam na " + getDestinationName(destination));
         progressDialog.setCancelable(true);
         progressDialog.setCanceledOnTouchOutside(false);
-        progressDialog.setMax(links.size());
         progressDialog.setProgressStyle(ProgressDialog.STYLE_HORIZONTAL);
-        progressDialog.setProgress(0);
         progressDialog.setOnCancelListener(this);
         progressDialog.show();
         keepScreenOn(true);
@@ -102,19 +99,62 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
     }
 
     @Override
-    protected void onProgressUpdate(Integer... progress) {
-        if (progressDialog != null) {
-            progressDialog.incrementProgressBy(1);
+    protected void onProgressUpdate(Integer... progressArray) {
+        MainActivity mainActivity = activityRef.get();
+        if (progressDialog == null || progressArray == null || mainActivity == null) {
+            return;
         }
+
+        int progress = progressArray[0];
+        final String title;
+        if (progress == 0) {
+            currentEpisode++;
+            progressDialog.setTitle("Malo strpljenja... (" + (currentEpisode + 1) + "/" + episodeIds.size() + ")");
+            title = mainActivity.titles.get(episodeIds.get(currentEpisode));
+
+            String message = "Snimam '" + title + "' na " + getDestinationName(destination);
+            if (destination == Destination.SD_CARD) {
+                int index = cacheDir.getAbsolutePath().indexOf("Android/data");
+                if (index != -1) {
+                    message = message + " (" + cacheDir.getAbsolutePath().substring(index) + ")";
+                }
+            }
+            message = message + ".";
+            progressDialog.setMessage(message);
+            progressDialog.setMax(currentEpisodePageCount);
+            progressDialog.setProgress(0);
+        }
+
+        progressDialog.incrementProgressBy(1);
     }
 
     @Override
     protected Boolean doInBackground(Void... voids) {
-        if (BuildConfig.DEBUG) { LOG_V("doInBackground"); }
-        if (fileLimit > -1) {
-            MainActivity.deleteOldSavedFiles(cacheDir, fileLimit);
+        if (cacheDir == null) {
+            return Boolean.FALSE;
         }
-        Activity activity;
+        for (String episodeToDelete : episodesToDelete) {
+            deleteOldEpisode(cacheDir, episodeToDelete);
+        }
+        for (Integer episodeIndex : episodeIds) {
+            MainActivity activity = activityRef.get();
+            if (activity == null) {
+                return null;
+            }
+            String episodeId = activity.numbers.get(episodeIndex);
+            List<String> links = AssetLoader.loadFromAssetOrUpdate(activity, episodeId, MainActivity.syncIndex);
+            currentEpisodePageCount = links.size();
+            Boolean result = doInBackground(episodeId, links);
+            if (result == null || !result) {
+                return result;
+            }
+        }
+        return Boolean.TRUE;
+    }
+
+    private Boolean doInBackground(String episodeId, List<String> links) {
+        if (BuildConfig.DEBUG) { LOG_V("doInBackground"); }
+        MainActivity activity;
         String filename;
         File file;
         Bitmap bitmap;
@@ -128,9 +168,6 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
             }
 
             filename = DownloadAndSave.fileNameFromLink(links.get(i), episodeId, i);
-            if (cacheDir == null) {
-                return null;
-            }
             file = new File(cacheDir, filename);
             if (file.exists()) {
                 if (BuildConfig.DEBUG) { LOG_V(filename + " already exists"); }
@@ -142,7 +179,18 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
                 return Boolean.FALSE;
             }
         }
+        if (!isCancelled()) {
+            markSuccessForEpisode(episodeId, cacheDir);
+        }
         return Boolean.TRUE;
+    }
+
+    public static void markSuccessForEpisode(String episodeId, File destinationDir) {
+        if (BuildConfig.DEBUG) { LOG_V("Marking success for " + episodeId); }
+        boolean markedSuccess = DownloadAndSave.createEmptyFile(destinationDir, DOWNLOADED_MARK_FOLDER, episodeId + DOWNLOADED_MARK_SUFFIX);
+        if (!markedSuccess) {
+            Log.wtf(TAG, "Can't mark we downloaded the episode " + episodeId);
+        }
     }
 
     @Override
@@ -164,5 +212,61 @@ public class EpisodeDownloadTask extends AsyncTask<Void, Integer, Boolean> imple
             progressDialog.dismiss();
             progressDialog = null;
         }
+    }
+
+    public static synchronized void deleteOldEpisode(@NonNull File dir, final String episodeId) {
+        if (BuildConfig.DEBUG) { LOG_V("Deleting episode " + episodeId); }
+        MainActivity.deleteFile(new File(new File(dir, DOWNLOADED_MARK_FOLDER), episodeId + DOWNLOADED_MARK_SUFFIX));
+        File[] files = dir.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File file, String s) {
+                return s.startsWith(episodeId + "_");
+            }
+        });
+        if (files == null) {
+            Log.wtf(TAG, "Nothing to delete for " + episodeId);
+            return;
+        }
+        for (File file : files) {
+            MainActivity.deleteFile(file);
+        }
+    }
+
+    @NonNull public static LinkedHashMap<String, Long> getCompletelyDownloadedEpisodes(@NonNull File destinationDir) {
+        File completedDir = new File(destinationDir, DOWNLOADED_MARK_FOLDER);
+        File[] files = completedDir.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File file, String s) {
+                return s != null && s.endsWith(DOWNLOADED_MARK_SUFFIX);
+            }
+        });
+        if (files == null) {
+            return new LinkedHashMap<>();
+        }
+        Arrays.sort(files, new Comparator<File>() {
+            @Override
+            public int compare(File f1, File f2) {
+                long lm1 = f1.lastModified();
+                long lm2 = f2.lastModified();
+                if (lm1 < lm2) {
+                    return -1;
+                } else if (lm1 == lm2) {
+                    return 0;
+                } else {
+                    return 1;
+                }
+            }
+        });
+        LinkedHashMap<String, Long> completelyDownloadedEpisodes = new LinkedHashMap<>();
+        for (File file : files) {
+            int index = file.getName().indexOf(DOWNLOADED_MARK_SUFFIX);
+            if (index == -1) {
+                Log.wtf(TAG, "Can't find the filtered suffix in " + file.getName());
+                continue;
+            }
+
+            completelyDownloadedEpisodes.put(file.getName().substring(0, index), file.lastModified());
+        }
+        return completelyDownloadedEpisodes;
     }
 }

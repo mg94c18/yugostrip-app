@@ -25,7 +25,7 @@ public class DownloadAndSave {
     private static final int ATTEMPTS = 2;
     private static final String PNG_SUFFIX = ".png";
 
-    public static Bitmap downloadAndSave(String link, File imageFile, int width, int height) {
+    static Bitmap downloadAndSave(String link, File imageFile, int width, int height) {
         for (int i = 0; i < ATTEMPTS; i++) {
             Pair<Bitmap, Boolean> result = downloadAndSaveNoRetry(link, imageFile, width, height);
             if (result.first != null || result.second) {
@@ -110,7 +110,35 @@ public class DownloadAndSave {
         }
     }
 
-    public @NonNull static String fileNameFromLink(String link, String episodeId, int page) {
+    public static boolean createEmptyFile(@NonNull File parentDir, @NonNull String subDirName, @NonNull String fileName) {
+        FileOutputStream fileOutputStream = null;
+        File file = null;
+        try {
+            File subDir = new File(parentDir, subDirName);
+            if (!subDir.exists()) {
+                if (!subDir.mkdir()) {
+                    Log.wtf(TAG, "Can't create subdir " + subDirName + " at " + parentDir.getAbsolutePath());
+                    return false;
+                }
+            }
+            file = new File(subDir, fileName);
+            if (BuildConfig.DEBUG) { LOG_V(">> createEmptyFile(" + file.getName() + ")"); }
+            fileOutputStream = new FileOutputStream(file);
+            fileOutputStream.close();
+            return true;
+        } catch (IOException e) {
+            Log.e(TAG, "Can't createEmptyFile", e);
+            if (file.exists()) {
+                MainActivity.deleteFile(file);
+            }
+            return false;
+        } finally {
+            IOUtils.closeQuietly(fileOutputStream);
+            if (BuildConfig.DEBUG) { LOG_V("<< createEmptyFile(" + fileName + ")"); }
+        }
+    }
+
+    @NonNull static String fileNameFromLink(String link, String episodeId, int page) {
         String extension = link.trim().endsWith(PNG_SUFFIX) ? "png" : "jpg";
         return String.format(Locale.US, "%s_%03d.%s", episodeId, page, extension);
     }

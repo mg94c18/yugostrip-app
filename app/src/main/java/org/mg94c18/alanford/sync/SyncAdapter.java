@@ -17,12 +17,18 @@ import android.webkit.URLUtil;
 import org.mg94c18.alanford.AssetLoader;
 import org.mg94c18.alanford.BuildConfig;
 import org.mg94c18.alanford.DownloadAndSave;
+import org.mg94c18.alanford.EpisodeDownloadTask;
+import org.mg94c18.alanford.ExternalStorageHelper;
 import org.mg94c18.alanford.MainActivity;
 import org.mg94c18.alanford.R;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,7 +42,7 @@ import static org.mg94c18.alanford.Logger.TAG;
  */
 public class SyncAdapter extends AbstractThreadedSyncAdapter {
     // Shared prefs to use for sync stuff
-    public static final String SHARED_PREFS_NAME = "sync";
+    static final String SHARED_PREFS_NAME = "sync";
     private static final String LAST_SYNC_TIME = "lastSyncTime";
     private static final String LAST_SYNC_INDEX = "lastSyncIndex";
     private static final String LAST_SYNC_APK_VERSION_CODE = "lastSyncVersionCode";
@@ -144,11 +150,14 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                         .putLong(LAST_SYNC_TIME, System.currentTimeMillis())
                         .putInt(LAST_SYNC_APK_VERSION_CODE, BuildConfig.VERSION_CODE)
                         .commit();
+
+                cleanupDownloadedPages(context, preferences.getLong(LAST_SYNC_INDEX, -1));
             }
 
             if (!success) {
                 syncResult.stats.numIoExceptions++;
             }
+
         } catch (Throwable throwable) {
             Log.wtf(TAG, "Failed to sync", throwable);
             syncResult.stats.numIoExceptions++;
@@ -262,13 +271,99 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         if (updates.isEmpty()) {
             if (BuildConfig.DEBUG) { LOG_V("No updates available"); }
         } else {
-            if (!consistentAssets(context, thisSyncIndex)) {
+            if (!consistentAssets(context, thisSyncIndex) || !consistentHiddenAssets(context, thisSyncIndex)) {
                 if (BuildConfig.DEBUG) { LOG_V("Failed consistency check"); }
                 return false;
             }
         }
 
         return preferences.edit().putLong(LAST_SYNC_INDEX, thisSyncIndex).commit();
+    }
+
+    private void cleanupDownloadedPages(Context context, long syncIndex) {
+        if (syncIndex < 0) {
+            Log.wtf(TAG, "Invalid sync index");
+            return;
+        }
+        File downloadDir = ExternalStorageHelper.getExternalCacheDir(context);
+        if (downloadDir == null) {
+            downloadDir = ExternalStorageHelper.getInternalOfflineDir(context);
+        }
+        final LinkedHashMap<String, Long> completelyDownloadedEpisodes = EpisodeDownloadTask.getCompletelyDownloadedEpisodes(downloadDir);
+        File[] files = downloadDir.listFiles(new FilenameFilter() {
+            @Override
+            public boolean accept(File file, String name) {
+                int index = name.lastIndexOf('_');
+                if (index == -1) {
+                    return false;
+                }
+                return !completelyDownloadedEpisodes.containsKey(name.substring(0, index));
+            }
+        });
+        if (files == null || files.length == 0) {
+            return;
+        }
+        Pattern pattern = Pattern.compile("^([^_]+)_([0-9][0-9][0-9])(\\.(png|jpg))");
+        Matcher matcher;
+        String episode;
+        String page;
+        int index;
+        Map<String, Set<String>> downloadedPages = new HashMap<>();
+        List<String> numbers = AssetLoader.loadFromAssetOrUpdate(context, AssetLoader.NUMBERS, syncIndex);
+        for (File file : files) {
+            matcher = pattern.matcher(file.getName());
+            if (!matcher.matches()) {
+                Log.wtf(TAG, "File name doesn't match expected format: " + file.getAbsolutePath());
+                continue;
+            }
+            episode = matcher.group(1);
+            page = matcher.group(2);
+            if (!downloadedPages.containsKey(episode)) {
+                downloadedPages.put(episode, new HashSet<String>());
+            }
+            if (BuildConfig.DEBUG) {
+                if (downloadedPages.get(episode).contains(page)) {
+                    Log.wtf(TAG, "Unexpected page: " + page + "; already exists for " + episode);
+                }
+            }
+            downloadedPages.get(episode).add(page);
+        }
+        for (Map.Entry<String, Set<String>> entry : downloadedPages.entrySet()) {
+            episode = entry.getKey();
+            index = numbers.indexOf(episode);
+            if (index == -1) {
+                if (BuildConfig.DEBUG) { LOG_V("Skipping over entry for " + episode); }
+                continue;
+            }
+
+            List<String> pages = AssetLoader.loadFromAssetOrUpdate(context, episode, syncIndex);
+            if (pages.size() == entry.getValue().size()) {
+                EpisodeDownloadTask.markSuccessForEpisode(episode, downloadDir);
+            } else {
+                EpisodeDownloadTask.deleteOldEpisode(downloadDir, episode);
+            }
+        }
+    }
+
+    private static boolean consistentHiddenAssets(Context context, long syncIndex) {
+        List<String> hiddenTitles = AssetLoader.loadFromAssetOrUpdate(context, AssetLoader.HIDDEN_TITLES, syncIndex);
+        List<String> hiddenNumbers = AssetLoader.loadFromAssetOrUpdate(context, AssetLoader.HIDDEN_NUMBERS, syncIndex);
+        List<String> hiddenMatches = AssetLoader.loadFromAssetOrUpdate(context, AssetLoader.HIDDEN_MATCHES, syncIndex);
+
+        int hiddenCount = hiddenTitles.size();
+        if (hiddenNumbers.size() != hiddenCount || hiddenMatches.size() != hiddenCount) {
+            Log.wtf(TAG, "Hidden sizes don't match: " + hiddenTitles.size() + "/" + hiddenNumbers.size() + "/" + hiddenMatches.size());
+            return false;
+        }
+
+        for (String hiddenNumber : hiddenNumbers) {
+            List<String> messages = AssetLoader.loadFromAssetOrUpdate(context, hiddenNumber, syncIndex);
+            if (messages.isEmpty()) {
+                if (BuildConfig.DEBUG) { LOG_V("Empty messages for hiddenNumber " + hiddenNumber); }
+                return false;
+            }
+        }
+        return true;
     }
 
     private static boolean consistentAssets(Context context, long syncIndex) {

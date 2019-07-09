@@ -29,10 +29,9 @@ public final class AssetLoader {
     public static final String TITLES = "titles";
     public static final String NUMBERS = "numbers";
     public static final String DATES = "dates";
-
-    private static final String ASSET_PREFS_NAME = "asset_prefs";
-    private static final long TIME_TOO_MUCH_IN_PAST = 1500000000000L; // Thu Jul 13 19:40:00 PDT 2017
-    private static final long TIME_TOO_MUCH_IN_FUTURE = 2000000000000L; // Tue May 17 20:33:20 PDT 2033
+    public static final String HIDDEN_TITLES = "hiddenTitles";
+    public static final String HIDDEN_NUMBERS = "hiddenNumbers";
+    public static final String HIDDEN_MATCHES = "hiddenMatches";
 
     // Pokriva jedan strip, a ako je *4 onda pokriva sve epizode
     private static final int CAPACITY = 128;
@@ -166,7 +165,7 @@ public final class AssetLoader {
         return list;
     }
 
-    public @Nullable static List<String> loadFromUrl(final String url) {
+    @Nullable static List<String> loadFromUrl(final String url) {
         return load(new StreamCreator() {
             private HttpURLConnection connection;
 
