@@ -18,6 +18,7 @@ public class DummyAccount {
     // An account type, in the form of a domain name
     private static final String ACCOUNT_TYPE = BuildConfig.APPLICATION_ID;
     private static final String PREF_ACCOUNT_NAME = "accountName";
+    private static final String SYNC_ACCOUNT_NAME_SUFFIX = " (sinhronizacija epizoda)";
 
     /**
      * Create a new dummy account for the sync adapter
@@ -31,7 +32,7 @@ public class DummyAccount {
             return new Account(accountName, ACCOUNT_TYPE);
         }
 
-        accountName = UUID.randomUUID().toString();
+        accountName = UUID.randomUUID().toString().substring(0, 8) + SYNC_ACCOUNT_NAME_SUFFIX;
         // Create the account type and default account
         Account newAccount = new Account(accountName, ACCOUNT_TYPE);
         // Get an instance of the Android account manager

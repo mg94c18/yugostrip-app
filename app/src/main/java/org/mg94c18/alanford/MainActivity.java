@@ -65,7 +65,9 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Locale;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     private static final long MAX_DOWNLOADED_IMAGES_ONLINE = 20;
@@ -101,6 +103,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     static long syncIndex;
     ActionBarDrawerToggle drawerToggle;
     Toast warningToast;
+    private static final String DOWNLOAD_DIALOG_TITLE = "Download";
+    private boolean sdCardReady;
+    private String previousProgressString;
+    private String progressString;
 
     private static int normalizePageIndex(int i, int max) {
         if (i < 0) {
@@ -128,6 +134,26 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     public SharedPreferences getSharedPreferences() {
         return getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+    }
+
+    /**
+     * Callback with download progress.
+     * @param downloadedPageCount: value 0 through allEpisodesPageCount, or -1 for canceled
+     * @param allEpisodesPageCount total number of pages, or -1 for canceled
+     */
+    public void onDownloadProgress(int downloadedPageCount, int allEpisodesPageCount) {
+        if (downloadedPageCount == -1 || allEpisodesPageCount == -1 || allEpisodesPageCount == 0 || downloadedPageCount >= allEpisodesPageCount) {
+            progressString = null;
+        } else {
+            progressString = String.format(Locale.US," (%d%%)", downloadedPageCount * 100 / allEpisodesPageCount);
+        }
+        ActionBar actionBar = getMyActionBar();
+        String titleWithNoProgress = "" + actionBar.getTitle();
+        if (previousProgressString != null && titleWithNoProgress.endsWith(previousProgressString)) {
+            titleWithNoProgress = titleWithNoProgress.substring(0, titleWithNoProgress.indexOf(previousProgressString));
+        }
+        previousProgressString = progressString;
+        mySetActionBarTitle(actionBar, titleWithNoProgress);
     }
 
     private class MyArrayAdapter extends ArrayAdapter<String> {
@@ -375,7 +401,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if (BuildConfig.DEBUG) { LOG_V("onStop"); }
         super.onStop();
         if (downloadTask != null) {
-            downloadTask.cancel(true);
+            downloadTask.cancel();
             downloadTask = null;
         }
         dismissAlertDialogs();
@@ -399,6 +425,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
+        if (BuildConfig.DEBUG) { LOG_V("onPrepareOptionsMenu"); }
+
         // Inflate the menu items for use in the action bar
         MenuInflater inflater = getMenuInflater();
         inflater.inflate(R.menu.glavni_meni, menu);
@@ -413,14 +441,19 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     searchManager.getSearchableInfo(getComponentName()));
         }
 
-        boolean sdCardReady = (ExternalStorageHelper.getExternalCacheDir(this) != null);
+        sdCardReady = (ExternalStorageHelper.getExternalCacheDir(this) != null);
+        updateDownloadButtons(menu);
+
+        return super.onCreateOptionsMenu(menu);
+    }
+
+    private void updateDownloadButtons(Menu menu) {
         if (sdCardReady) {
             menu.findItem(R.id.action_download).setVisible(true);
         } else {
             menu.findItem(R.id.action_download_internal).setVisible(true);
         }
-
-        return super.onCreateOptionsMenu(menu);
+        menu.findItem(R.id.action_cancel_download).setVisible(false);
     }
 
     @Override
@@ -437,20 +470,45 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 @Override
                 public void onDrawerClosed(View view) {
                     super.onDrawerClosed(view);
-                    actionBar.setTitle(selectedEpisodeTitle);
+                    mySetActionBarTitle(actionBar, selectedEpisodeTitle);
                 }
 
                 @Override
                 public void onDrawerOpened(View view) {
                     super.onDrawerOpened(view);
-                    actionBar.setTitle("" + titles.size() + " epizoda");
+                    String actionBarTitle = "Epizode";
+                    if (numbers != null && numbers.size() > 0) {
+                        actionBarTitle = actionBarTitle + " " + numbers.get(0) + "-" + numbers.get(numbers.size() - 1);
+                    }
+                    mySetActionBarTitle(actionBar, actionBarTitle);
                 }
             };
             drawerLayout.addDrawerListener(drawerToggle);
             drawerToggle.syncState();
         }
 
+        if (downloadTask != null && downloadTask.completed()) {
+            downloadTask = null;
+        }
+
+        if (downloadTask != null) {
+            menu.findItem(R.id.action_download).setVisible(false);
+            menu.findItem(R.id.action_download_internal).setVisible(false);
+            menu.findItem(R.id.action_cancel_download).setVisible(true);
+        } else {
+            menu.findItem(R.id.action_cancel_download).setVisible(false);
+            updateDownloadButtons(menu);
+            progressString = null;
+        }
+
         return super.onPrepareOptionsMenu(menu);
+    }
+
+    private void mySetActionBarTitle(@NonNull ActionBar actionBar, @NonNull String title) {
+        if (progressString != null) {
+            title = title + progressString;
+        }
+        actionBar.setTitle(title);
     }
 
     @Override
@@ -498,6 +556,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     return true;
                 }
                 configureDownload(pagerAdapter.episode, EpisodeDownloadTask.Destination.INTERNAL_MEMORY);
+                return true;
+            case R.id.action_cancel_download:
+                if (downloadTask == null) {
+                    Log.wtf(TAG, "Nothing to cancel");
+                } else {
+                    downloadTask.cancel();
+                    downloadTask = null;
+                }
                 return true;
             case R.id.action_review:
                 Intent intent = PlayIntentMaker.createPlayIntent(this);
@@ -582,12 +648,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             namesToShow.add(numberAndTitle.get(i));
             indexesOfNamesToShow.add(i);
         }
-        final long freeSpaceMb = ExternalStorageHelper.getFreeSpaceAtDir(destinationDir) / BYTES_PER_MB;
+        long freeSpaceAtDir = ExternalStorageHelper.getFreeSpaceAtDir(destinationDir);
+        final long freeSpaceMb = (freeSpaceAtDir != -1 ? freeSpaceAtDir : Long.MAX_VALUE) / BYTES_PER_MB;
         final long averageMbPerEpisode = getResources().getInteger(R.integer.average_episode_size_mb);
         warningToast = null;
         configureDownloadDialog = new AlertDialog.Builder(this)
                 .setCancelable(true)
-                .setTitle("Odaberite epizode za download")
+                .setTitle(DOWNLOAD_DIALOG_TITLE)
                 .setMultiChoiceItems(namesToShow.toArray(new String[0]), null, new DialogInterface.OnMultiChoiceClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i, boolean checked) {
@@ -601,7 +668,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         if (episodesToDownload.size() > maxEpisodesToOffer) {
                             positiveButton.setEnabled(false);
                         } else {
-                            if (episodesToDownload.size() * averageMbPerEpisode + spaceBufferMb > freeSpaceMb) {
+                            long downloadMb = episodesToDownload.size() * averageMbPerEpisode;
+                            if (downloadMb + spaceBufferMb > freeSpaceMb) {
                                 if ((episodesToDownload.size() - completelyDownloadedEpisodes.size()) * averageMbPerEpisode + spaceBufferMb < freeSpaceMb) {
                                     if (BuildConfig.DEBUG) { LOG_V("Will delete old episodes"); }
                                     if (warningToast != null) {
@@ -610,6 +678,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                     warningToast = Toast.makeText(activity,"Stare epizode će biti obrisane", Toast.LENGTH_SHORT);
                                     warningToast.show();
                                     positiveButton.setEnabled(true);
+                                    updateDownloadDialogTitle(configureDownloadDialog, downloadMb);
                                 } else {
                                     if (BuildConfig.DEBUG) { LOG_V("Too much to download"); }
                                     positiveButton.setEnabled(false);
@@ -621,6 +690,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                     warningToast = null;
                                 }
                                 positiveButton.setEnabled(true);
+                                updateDownloadDialogTitle(configureDownloadDialog, downloadMb);
                             }
                         }
                     }
@@ -640,7 +710,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                                 }
                             }
                         }
-                        downloadTask = new EpisodeDownloadTask(episodesToDelete, activity, episodesToDownload, destinationDir, destination);
+                        downloadTask = new EpisodeDownloadTask(episodesToDelete, activity, episodesToDownload, destinationDir);
+                        onDownloadProgress(-1, -1);
                         downloadTask.execute();
                     }
                 })
@@ -650,6 +721,14 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if (listView != null && indexToScrollTo != -1) {
             listView.setSelection(indexToScrollTo);
         }
+    }
+
+    private static void updateDownloadDialogTitle(AlertDialog configureDownloadDialog, long downloadMb) {
+        String title = DOWNLOAD_DIALOG_TITLE;
+        if (downloadMb > 0) {
+            title = title + String.format(Locale.US, " (oko %d MB)", downloadMb);
+        }
+        configureDownloadDialog.setTitle(title);
     }
 
     private void tryGoingToPage(String numberString) {
@@ -771,7 +850,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             selectedEpisodeTitle = title;
             selectedEpisodeNumber = number;
         }
-        getMyActionBar().setTitle(title);
+        mySetActionBarTitle(getMyActionBar(), title);
         pagerAdapter = new MyPagerAdapter(this, getSupportFragmentManager(), number);
         viewPager.setAdapter(pagerAdapter);
         if (position >= 0) {
@@ -842,7 +921,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             private static final String SCALE_Y = "scale_y";
             private static final float DELTA = 0.02f;
             private static final float SCALE_MIN = 1.00f;
-            private static final float SCALE_MAX = 1.20f;
+            private static final float SCALE_MAX_X = 1.20f;
+            private static final float SCALE_MAX_Y = 1.50f;
             private static final float SPAN_THRESHOLD = 100f;
 
             String episodeId;
@@ -907,7 +987,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 updateScaleFromPrefs(getContext().getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE), imageView);
                 pageView.setOnTouchListener(this);
 
-                loadTask = new MyLoadTask(getContext(), link, filename, imageView);
+                loadTask = new MyLoadTask(getContext(), episodeId, link, filename, imageView);
                 loadTask.execute();
 
                 return pageView;
@@ -937,8 +1017,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     return true;
                 }
 
-                float scaleX = calculateScale(view.getScaleX(), scaleFactor, scaleGestureDetector.getCurrentSpanX());
-                float scaleY = calculateScale(view.getScaleY(), scaleFactor, scaleGestureDetector.getCurrentSpanY());
+                float scaleX = calculateScale(view.getScaleX(), scaleFactor, scaleGestureDetector.getCurrentSpanX(), SCALE_MAX_X);
+                float scaleY = calculateScale(view.getScaleY(), scaleFactor, scaleGestureDetector.getCurrentSpanY(), SCALE_MAX_Y);
                 if (Float.compare(scaleX, view.getScaleX()) == 0 && Float.compare(scaleY, view.getScaleY()) == 0) {
                     return false;
                 }
@@ -981,7 +1061,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 imageView.invalidate();
             }
 
-            private static float calculateScale(float scale, float scaleFactor, float currentSpan) {
+            private static float calculateScale(float scale, float scaleFactor, float currentSpan, float scaleMax) {
                 if (Float.compare(Math.abs(currentSpan), SPAN_THRESHOLD) < 0) {
                     return scale;
                 }
@@ -993,7 +1073,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 }
 
                 // Don't let the object get too small or too large.
-                return Math.max(SCALE_MIN, Math.min(scale, SCALE_MAX));
+                return Math.max(SCALE_MIN, Math.min(scale, scaleMax));
             }
 
             @Override
@@ -1012,12 +1092,36 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 WeakReference<ImageView> imageView;
                 String link;
                 WeakReference<Context> contextRef;
+                String episodeId;
+                int destinationViewWidth;
+                int destinationViewHeight;
 
-                MyLoadTask(Context context, String link, String imageFile, ImageView imageView) {
+                MyLoadTask(Context context, String episodeId, String link, String imageFile, ImageView imageView) {
                     this.imageFile = imageFile;
                     this.link = link;
                     this.contextRef = new WeakReference<>(context);
                     this.imageView = new WeakReference<>(imageView);
+                    this.episodeId = episodeId;
+                    this.destinationViewHeight = imageView.getHeight();
+                    this.destinationViewWidth = imageView.getWidth();
+                }
+
+                private static void addDirAndEpisodeDir(List<File> cacheDirs, File dir, String subdirName, String episodeId) {
+                    if (dir == null) {
+                        return;
+                    }
+                    cacheDirs.add(dir);
+                    File subdir = new File(dir, subdirName);
+                    if (!subdir.exists()) {
+                        return;
+                    }
+
+                    File episodeDir = new File(subdir, episodeId);
+                    if (!episodeDir.exists()) {
+                        return;
+                    }
+
+                    cacheDirs.add(episodeDir);
                 }
 
                 @Override
@@ -1029,9 +1133,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         return null;
                     }
                     List<File> cacheDirs = new ArrayList<>();
-                    cacheDirs.add(context.getCacheDir());
-                    cacheDirs.add(ExternalStorageHelper.getExternalCacheDir(context));
-                    cacheDirs.add(new File(context.getCacheDir(), INTERNAL_OFFLINE));
+                    addDirAndEpisodeDir(cacheDirs, new File(context.getCacheDir(), INTERNAL_OFFLINE), EpisodeDownloadTask.EPISODES_FOLDER, episodeId);
+                    addDirAndEpisodeDir(cacheDirs, ExternalStorageHelper.getExternalCacheDir(context), EpisodeDownloadTask.EPISODES_FOLDER, episodeId);
                     for (File cacheDir : cacheDirs) {
                         if (cacheDir == null) {
                             continue;
@@ -1067,7 +1170,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         return null;
                     } else {
                         deleteOldSavedFiles(imageToDownload.getParentFile(), MAX_DOWNLOADED_IMAGES_ONLINE);
-                        return DownloadAndSave.downloadAndSave(link, imageToDownload, destinationView.getWidth(), destinationView.getHeight());
+                        return DownloadAndSave.downloadAndSave(link, imageToDownload, destinationViewWidth, destinationViewHeight, 3);
                     }
                 }
 

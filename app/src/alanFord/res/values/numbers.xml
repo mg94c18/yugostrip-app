@@ -1,4 +1,4 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <integer name="average_episode_size_mb">64</integer>
+    <integer name="average_episode_size_mb">67</integer>
 </resources>

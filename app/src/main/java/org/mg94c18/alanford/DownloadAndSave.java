@@ -22,11 +22,10 @@ import static org.mg94c18.alanford.Logger.TAG;
 
 public class DownloadAndSave {
     private static final String TMP_SUFFIX = ".tmp";
-    private static final int ATTEMPTS = 2;
     private static final String PNG_SUFFIX = ".png";
 
-    static Bitmap downloadAndSave(String link, File imageFile, int width, int height) {
-        for (int i = 0; i < ATTEMPTS; i++) {
+    static Bitmap downloadAndSave(String link, File imageFile, int width, int height, int attempts) {
+        for (int i = 0; i < attempts; i++) {
             Pair<Bitmap, Boolean> result = downloadAndSaveNoRetry(link, imageFile, width, height);
             if (result.first != null || result.second) {
                 return result.first;
@@ -60,6 +59,7 @@ public class DownloadAndSave {
 
             if (!tempFile.renameTo(imageFile)) {
                 Log.wtf(TAG, "Can't rename " + tempFile + " to " + imageFile);
+                return null;
             }
             return Pair.create(bitmap, Boolean.FALSE);
         } catch (IOException e) {

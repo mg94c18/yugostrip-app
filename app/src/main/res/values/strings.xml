@@ -5,4 +5,5 @@
     <string name="play_intent_title">Vidi u Google Play</string>
     <string name="drawer_open_accessibility">Otvori spisak epizoda</string>
     <string name="drawer_close_accessibility">Zatvori spisak epizoda</string>
+    <string name="otkazi_download">Otkaži download</string>
 </resources>

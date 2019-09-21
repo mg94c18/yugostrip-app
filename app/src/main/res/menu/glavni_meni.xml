@@ -15,6 +15,10 @@
         android:title="Sačuvaj za offline"
         app:showAsAction="never"
         android:visible="false"/>
+    <item android:id="@+id/action_cancel_download"
+        android:title="@string/otkazi_download"
+        app:showAsAction="never"
+        android:visible="false"/>
     <item android:id="@+id/action_review"
         app:showAsAction="never"
         android:title="@string/play_intent_title" />

@@ -46,13 +46,18 @@ public class ExternalStorageHelper {
     }
 
     static long getFreeSpaceAtDir(@NonNull File dir) {
-        StatFs statFs = new StatFs(dir.getPath());
-        final long bytesAvailable;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
-            bytesAvailable = statFs.getAvailableBlocksLong() * statFs.getBlockSizeLong();
-        } else {
-            bytesAvailable = statFs.getAvailableBlocks() * statFs.getBlockSize();
+        try {
+            StatFs statFs = new StatFs(dir.getPath());
+            final long bytesAvailable;
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR2) {
+                bytesAvailable = statFs.getAvailableBlocksLong() * statFs.getBlockSizeLong();
+            } else {
+                bytesAvailable = statFs.getAvailableBlocks() * statFs.getBlockSize();
+            }
+            return bytesAvailable;
+        } catch (IllegalArgumentException iae) {
+            Log.wtf(TAG, "Can't StatFs()", iae);
+            return -1;
         }
-        return bytesAvailable;
     }
 }

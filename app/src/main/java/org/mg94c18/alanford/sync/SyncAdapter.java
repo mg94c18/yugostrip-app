@@ -23,6 +23,7 @@ import org.mg94c18.alanford.MainActivity;
 
 import java.io.File;
 import java.io.FilenameFilter;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -153,6 +154,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                         .commit();
 
                 cleanupDownloadedPages(context, preferences.getLong(LAST_SYNC_INDEX, -1));
+                Log.i(TAG, "cleanupDownloadedPages() finished");
             }
 
             if (!success) {
@@ -304,7 +306,15 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         return preferences.edit().putLong(LAST_SYNC_INDEX, thisSyncIndex).commit();
     }
 
-    private void cleanupDownloadedPages(Context context, long syncIndex) {
+    private static boolean isImageFile(File file) {
+        return isImageFile(file.getName());
+    }
+
+    private static boolean isImageFile(String fileName) {
+        return fileName.endsWith(".jpg") || fileName.endsWith(".png");
+    }
+
+    public static void cleanupDownloadedPages(Context context, long syncIndex) {
         if (syncIndex < 0) {
             Log.wtf(TAG, "Invalid sync index");
             return;
@@ -313,60 +323,97 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         if (downloadDir == null) {
             downloadDir = ExternalStorageHelper.getInternalOfflineDir(context);
         }
-        final LinkedHashMap<String, Long> completelyDownloadedEpisodes = EpisodeDownloadTask.getCompletelyDownloadedEpisodes(downloadDir);
-        File[] files = downloadDir.listFiles(new FilenameFilter() {
+        final Map<String, Set<File>> pagesToMove = new HashMap<>();
+        File[] filesInCache = downloadDir.listFiles(new FilenameFilter() {
             @Override
             public boolean accept(File file, String name) {
                 int index = name.lastIndexOf('_');
                 if (index == -1) {
                     return false;
                 }
-                return !completelyDownloadedEpisodes.containsKey(name.substring(0, index));
+                String episode = name.substring(0, index);
+                if (!isImageFile(name)) {
+                    return false;
+                }
+                Set<File> episodePagesToMove = pagesToMove.get(episode);
+                if (episodePagesToMove == null) {
+                    episodePagesToMove = new HashSet<>();
+                    pagesToMove.put(episode, episodePagesToMove);
+                }
+                episodePagesToMove.add(new File(file, name));
+                return true;
             }
         });
-        if (files == null || files.length == 0) {
-            return;
-        }
-        Pattern pattern = Pattern.compile("^([^_]+)_([0-9][0-9][0-9])(\\.(png|jpg))");
-        Matcher matcher;
         String episode;
-        String page;
-        int index;
-        Map<String, Set<String>> downloadedPages = new HashMap<>();
-        List<String> numbers = AssetLoader.loadFromAssetOrUpdate(context, AssetLoader.NUMBERS, syncIndex);
-        for (File file : files) {
-            matcher = pattern.matcher(file.getName());
-            if (!matcher.matches()) {
-                Log.wtf(TAG, "File name doesn't match expected format: " + file.getAbsolutePath());
-                continue;
+        for (Map.Entry<String, Set<File>> entry : pagesToMove.entrySet()) {
+            episode = entry.getKey();
+            File episodeDir = EpisodeDownloadTask.getOrCreateEpisodeDir(downloadDir, episode);
+            if (episodeDir == null) {
+                return;
             }
-            episode = matcher.group(1);
-            page = matcher.group(2);
-            if (!downloadedPages.containsKey(episode)) {
-                downloadedPages.put(episode, new HashSet<String>());
-            }
-            if (BuildConfig.DEBUG) {
-                if (downloadedPages.get(episode).contains(page)) {
-                    Log.wtf(TAG, "Unexpected page: " + page + "; already exists for " + episode);
+            File destinationFile;
+            for (File fileToMove : entry.getValue()) {
+                destinationFile = new File(episodeDir, fileToMove.getName());
+                if (destinationFile.exists() && isImageFile(destinationFile)) {
+                    MainActivity.deleteFile(fileToMove);
+                    continue;
+                }
+                if (!fileToMove.renameTo(destinationFile)) {
+                    Log.wtf(TAG, "Can't rename " + fileToMove.getAbsolutePath() + " to " + destinationFile.getAbsolutePath());
+                    return;
                 }
             }
-            downloadedPages.get(episode).add(page);
         }
-        for (Map.Entry<String, Set<String>> entry : downloadedPages.entrySet()) {
-            episode = entry.getKey();
-            index = numbers.indexOf(episode);
-            if (index == -1) {
-                if (BuildConfig.DEBUG) { LOG_V("Skipping over entry for " + episode); }
+
+        LinkedHashMap<String, Long> completelyDownloadedEpisodes = EpisodeDownloadTask.getCompletelyDownloadedEpisodes(downloadDir);
+        List<String> episodesToDelete = new ArrayList<>();
+        for (Map.Entry<String, Long> entry : completelyDownloadedEpisodes.entrySet()) {
+            String episodeId = entry.getKey();
+            if (entry.getValue() >= System.currentTimeMillis() - 1000 * SECONDS_PER_DAY) {
+                if (BuildConfig.DEBUG) { LOG_V("Episode " + episodeId + " is fresh, skipping it"); }
                 continue;
             }
+            File[] downloadedPages = downloadedPagesForEpisode(downloadDir, episodeId);
+            if (downloadedPages == null) {
+                Log.wtf(TAG, "Episode " + episodeId + " failed to enumerate, skipping it for now");
+                continue;
+            }
+            List<String> assetPages = AssetLoader.loadFromAssetOrUpdate(context, episodeId, syncIndex);
 
-            List<String> pages = AssetLoader.loadFromAssetOrUpdate(context, episode, syncIndex);
-            if (pages.size() == entry.getValue().size()) {
-                EpisodeDownloadTask.markSuccessForEpisode(episode, downloadDir);
-            } else {
-                EpisodeDownloadTask.deleteOldEpisode(downloadDir, episode);
+            if (downloadedPages.length < assetPages.size()) {
+                if (BuildConfig.DEBUG) {
+                    LOG_V("Episode " + episodeId + " downloaded long ago (" + entry.getValue() + ") and not complete, mark for deletion");
+                }
+                episodesToDelete.add(episodeId);
             }
         }
+        EpisodeDownloadTask.deleteOldEpisodes(downloadDir, episodesToDelete);
+    }
+
+    @Nullable private static File[] downloadedPagesForEpisode(File downloadDir, String episodeId) {
+        File episodeDir = EpisodeDownloadTask.getOrCreateEpisodeDir(downloadDir, episodeId);
+        if (episodeDir == null) {
+            return null;
+        }
+        final Pattern pattern = Pattern.compile("^(.+)_([0-9][0-9][0-9])(\\.(png|jpg))");
+        File[] files = episodeDir.listFiles(new FilenameFilter() {
+            Matcher matcher;
+
+            @Override
+            public boolean accept(File file, String name) {
+                matcher = pattern.matcher(name);
+                if (!matcher.matches()) {
+                    Log.wtf(TAG, "Unexpected file: " + name + " at " + file.getAbsolutePath());
+                    return false;
+                }
+                if (!isImageFile(name)) {
+                    Log.wtf(TAG, "Unexpected file name: " +  name);
+                    return false;
+                }
+                return true;
+            }
+        });
+        return files;
     }
 
     private static boolean consistentHiddenAssets(Context context, long syncIndex) {
