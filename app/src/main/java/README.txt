@@ -1,7 +1,7 @@
 FEEDBACK:
 * Omiljene epizode (jedan)
-* Dark Theme
-* Full Screen! (nekoliko!)
+* Dark Theme (barem 10)
+* Full Screen (nekoliko)
 
 TODO:
 * ? Ako "Idi na stranu" dobije veliki broj, a strip je N_b, uzeti u obzir N_a
@@ -23,9 +23,3 @@ Deploy:
 Sledeći put:
     MOVE updates.gz sa NOVIM titles.gz, numbers.gz, dates.gz from release to rollback
     NOVI updates.gz sa NOVIM titles.gz, numbers.gz, dates.gz
-
-Easter eggs:
-    - Isus
-    - oprostaj
-    - pokajanje
-    - nada
