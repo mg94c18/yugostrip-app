@@ -25,8 +25,12 @@ public class ExternalStorageHelper {
         }
 
         for (File dir : dirs) {
-            if (dir != null && !Environment.isExternalStorageEmulated(dir)) {
-                return dir;
+            try {
+                if (dir != null && !Environment.isExternalStorageEmulated(dir)) {
+                    return dir;
+                }
+            } catch (IllegalArgumentException e) {
+                Log.wtf(TAG, "Can't check if isExternalStorageEmulated(" + dir + ")", e);
             }
         }
 

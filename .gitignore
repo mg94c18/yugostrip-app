@@ -9,3 +9,7 @@
 .externalNativeBuild
 .idea/*
 app/release
+app/alanFord/release/
+app/alanFord/debug/
+app/martiMisterija/release/
+app/martiMisterija/debug/

@@ -5,6 +5,7 @@ import android.content.res.AssetManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
+import android.util.Pair;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,7 +13,6 @@ import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -172,9 +172,13 @@ public final class AssetLoader {
 
             @Override
             public InputStream createStream() throws IOException {
-                connection = (HttpURLConnection) new URL(url).openConnection();
-                connection.connect();
-                return connection.getInputStream();
+                Pair<HttpURLConnection, InputStream> readInfo = DownloadAndSave.readUrlWithRedirect(url);
+                if (readInfo == null) {
+                    connection = null;
+                    return null;
+                }
+                connection = readInfo.first;
+                return readInfo.second;
             }
 
             @Override

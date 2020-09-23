@@ -1,6 +1,5 @@
 FEEDBACK:
 * Omiljene epizode (jedan)
-* Dark Theme (barem 10)
 * Full Screen (nekoliko)
 
 TODO:

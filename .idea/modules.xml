@@ -2,8 +2,8 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/ViewPagerTest.iml" filepath="$PROJECT_DIR$/ViewPagerTest.iml" />
-      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
+      <module fileurl="file://$PROJECT_DIR$/ViewPagerTest.iml" filepath="$PROJECT_DIR$/ViewPagerTest.iml" group="ViewPagerTest" />
+      <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" group="ViewPagerTest/app" />
     </modules>
   </component>
 </project>

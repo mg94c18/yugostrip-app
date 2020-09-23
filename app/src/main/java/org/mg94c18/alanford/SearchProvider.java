@@ -118,9 +118,6 @@ public class SearchProvider extends ContentProvider {
         if (context == null) {
             return;
         }
-        if (MainActivity.internetNotAvailable(context)) {
-            return;
-        }
 
         for (int i = 0; i < HIDDEN_MATCHES.size(); i++) {
             boolean addThis = false;

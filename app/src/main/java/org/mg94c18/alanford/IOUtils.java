@@ -5,7 +5,6 @@ import android.util.Log;
 import java.io.Closeable;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -40,6 +39,20 @@ class IOUtils {
         while ((bytesRead = inputStream.read(buffer)) > 0) {
             outputStream.write(buffer, 0, bytesRead);
         }
+    }
+
+    static boolean equals(byte[] A, byte[] B) {
+        if (A.length != B.length) {
+            return false;
+        }
+
+        for (int i = 0; i < A.length; i++) {
+            if (A[i] != B[i]) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     static void closeQuietly(Closeable closeable) {

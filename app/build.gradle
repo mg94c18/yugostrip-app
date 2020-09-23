@@ -5,9 +5,9 @@ android {
     defaultConfig {
         applicationId 'org.mg94c18'
         minSdkVersion 15
-        targetSdkVersion 26
-        versionCode 3141592
-        versionName "3.141592" // Kada menjam ovo, treba da promenim i apk_assets_time!
+        targetSdkVersion 29
+        versionCode 31415926
+        versionName "3.1415926" // Kada menjam ovo, treba da promenim i apk_assets_time!
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {

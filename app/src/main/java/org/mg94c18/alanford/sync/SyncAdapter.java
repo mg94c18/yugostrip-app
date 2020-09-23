@@ -217,6 +217,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
             }
         }
         File thisSyncUpdates = new File(thisSyncDir, UPDATES);
+        Log.i(TAG, "My sync slot=" + mySyncSlot);
         boolean downloaded = DownloadAndSave.saveUrlToFile(syncUrls.get(mySyncSlot), thisSyncUpdates);
         if (!downloaded) {
             if (BuildConfig.DEBUG) { LOG_V("Can't save master link"); }

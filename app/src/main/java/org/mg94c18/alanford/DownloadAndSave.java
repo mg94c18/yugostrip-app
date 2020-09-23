@@ -2,9 +2,11 @@ package org.mg94c18.alanford;
 
 import android.graphics.Bitmap;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.util.Log;
 import android.util.Pair;
 
+import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -15,6 +17,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.List;
 import java.util.Locale;
+import java.util.Scanner;
 import java.util.zip.GZIPOutputStream;
 
 import static org.mg94c18.alanford.Logger.LOG_V;
@@ -59,7 +62,7 @@ public class DownloadAndSave {
 
             if (!tempFile.renameTo(imageFile)) {
                 Log.wtf(TAG, "Can't rename " + tempFile + " to " + imageFile);
-                return null;
+                return Pair.create(null, Boolean.FALSE);
             }
             return Pair.create(bitmap, Boolean.FALSE);
         } catch (IOException e) {
@@ -83,15 +86,76 @@ public class DownloadAndSave {
         }
     }
 
+    // HttpURLConnection follows redirects...  Except when it doesn't.
+    // So sometimes it gets into this state of "downloading" but in fact the inputStream receives raw HTTP headers
+    public static @Nullable Pair<HttpURLConnection, InputStream> readUrlWithRedirect(String url) {
+        HttpURLConnection connection = null;
+        InputStream inputStream = null;
+        try {
+            connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.connect(); // when changing this, change the below connection.connect() too
+            inputStream = new BufferedInputStream(connection.getInputStream());
+            byte[] httpHeader = "HTTP/".getBytes("UTF-8");
+            byte[] readHeader = new byte[httpHeader.length];
+            inputStream.mark(readHeader.length * 2); // *2 not really needed, but being super-clean means asking for trouble
+            int bytesRead = inputStream.read(readHeader);
+            inputStream.reset();
+            if (bytesRead == readHeader.length && IOUtils.equals(readHeader, httpHeader)) {
+                Scanner scanner = null;
+                try {
+                    scanner = new Scanner(inputStream);
+                    String line;
+                    String locationHeader = "Location: ";
+                    while (scanner.hasNextLine()) {
+                        line = scanner.nextLine();
+                        if (line.isEmpty()) {
+                            Log.wtf(TAG, "Didn't find Location header, reached the end");
+                            // Either not a 301/302, or something else unexpected.  In both cases, break instead of returning null.
+                            // Who knows, perhaps consuming all the headers and the empty line will make it so that the rest is body and works OK.
+                            break;
+                        }
+
+                        if (BuildConfig.DEBUG) { LOG_V("Found header '" + line + "'"); }
+
+                        if (line.startsWith(locationHeader)) {
+                            url = line.substring(locationHeader.length());
+                            if (BuildConfig.DEBUG) { LOG_V("Found Location: " + url); }
+                            connection.disconnect();
+                            IOUtils.closeQuietly(inputStream);
+                            connection = (HttpURLConnection) new URL(url).openConnection();
+                            connection.connect();
+                            inputStream = new BufferedInputStream(connection.getInputStream());
+                            break;
+                        }
+                    }
+                } finally {
+                    if (scanner != null) scanner.close();
+                }
+            } else {
+                if (BuildConfig.DEBUG) { LOG_V("Read " + bytesRead + " bytes, not matching the header"); }
+            }
+            return Pair.create(connection, inputStream);
+        } catch (IOException e) {
+            Log.wtf(TAG, "Can't readUrlWithRedirect(" + url + ")", e);
+            if (connection != null) connection.disconnect();
+            IOUtils.closeQuietly(inputStream);
+            return null;
+        }
+    }
+
     public static boolean saveUrlToFile(String url, File file) {
         HttpURLConnection connection = null;
         InputStream inputStream = null;
         FileOutputStream fileOutputStream = null;
         try {
             if (BuildConfig.DEBUG) { LOG_V(">> saveUrlToFile(" + file.getName() + ")"); }
-            connection = (HttpURLConnection) new URL(url).openConnection();
-            connection.connect();
-            inputStream = connection.getInputStream();
+            Pair<HttpURLConnection, InputStream> readInfo = readUrlWithRedirect(url);
+            if (readInfo == null) {
+                // WTF already logged
+                return false;
+            }
+            connection = readInfo.first;
+            inputStream = readInfo.second;
             fileOutputStream = new FileOutputStream(file);
             IOUtils.copy(inputStream, fileOutputStream);
             fileOutputStream.close();

@@ -7,6 +7,10 @@
     <item android:id="@+id/go_to_page"
         android:title="Idi na stranu..."
         app:showAsAction="never"/>
+    <item android:id="@+id/action_dark_mode"
+        android:title="Dark mode on/off"
+        app:showAsAction="never"
+        android:visible="false"/>
     <item android:id="@+id/action_download"
         android:title="Sačuvaj na SD card"
         app:showAsAction="never"

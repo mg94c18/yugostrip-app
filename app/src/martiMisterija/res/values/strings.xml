@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="apk_assets_time">1570754147000</string>
+    <string name="apk_assets_time">1600890841000</string>
 
     <string name="sync_account_type">org.mg94c18.martimisterija</string>
     <string name="sync_search_suggest_authority">org.mg94c18.martimisterija.searchprovider</string>

@@ -13,6 +13,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.AsyncTask;
+import android.os.Build;
 import android.os.Environment;
 import android.os.Parcelable;
 import android.support.annotation.NonNull;
@@ -26,6 +27,7 @@ import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.widget.AppCompatImageView;
 import android.text.InputType;
 import android.util.Log;
@@ -67,7 +69,7 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Pattern;
+import java.util.TreeSet;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     private static final long MAX_DOWNLOADED_IMAGES_ONLINE = 20;
@@ -78,6 +80,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static final String DRAWER = "drawer";
     private static final String CURRENT_PAGE_EPISODE = "current_page_episode";
     private static final String CURRENT_PAGE = "current_page";
+    private static final String NIGHT_MODE = "night_mode";
     private static final String CONTACT_EMAIL = "yckopo@gmail.com";
     private static final String MY_ACTION_VIEW = BuildConfig.APPLICATION_ID + ".VIEW";
     private static final String INTERNET_PROBLEM = "Internet Problem";
@@ -99,6 +102,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     EpisodeDownloadTask downloadTask;
     AlertDialog pagePickerDialog;
     AlertDialog configureDownloadDialog;
+    TreeSet<Long> downloadCancelTimes = new TreeSet<>();
+    int TIMES_TO_CANCEL_FOR_ALL = 5;
     AlertDialog quoteDialog;
     static long syncIndex;
     ActionBarDrawerToggle drawerToggle;
@@ -107,6 +112,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private boolean sdCardReady;
     private String previousProgressString;
     private String progressString;
+    private static boolean nightModeAllowed = Build.VERSION.SDK_INT >= 29;
 
     private static int normalizePageIndex(int i, int max) {
         if (i < 0) {
@@ -250,6 +256,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        if (nightModeAllowed) {
+            updateNightMode();
+        }
+
         if (BuildConfig.DEBUG) { LOG_V("onCreate"); }
         super.onCreate(savedInstanceState);
         downloadTask = null;
@@ -443,6 +453,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
         sdCardReady = (ExternalStorageHelper.getExternalCacheDir(this) != null);
         updateDownloadButtons(menu);
+        updateDarkModeButtons(menu);
 
         return super.onCreateOptionsMenu(menu);
     }
@@ -454,6 +465,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             menu.findItem(R.id.action_download_internal).setVisible(true);
         }
         menu.findItem(R.id.action_cancel_download).setVisible(false);
+    }
+
+    private void updateDarkModeButtons(Menu menu) {
+        MenuItem item = menu.findItem(R.id.action_dark_mode);
+        if (nightModeAllowed) {
+            item.setVisible(true);
+        } else {
+            item.setVisible(false);
+        }
     }
 
     @Override
@@ -606,9 +626,25 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 if (BuildConfig.DEBUG) { LOG_V("Search requested"); }
                 onSearchRequested();
                 return true;
+            case R.id.action_dark_mode:
+                boolean newNightMode = !getNightModeFromSharedPrefs();
+                getSharedPreferences().edit().putBoolean(NIGHT_MODE, newNightMode).apply();
+                recreate();
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
+    }
+
+    private boolean getNightModeFromSharedPrefs() {
+        return getSharedPreferences().getBoolean(NIGHT_MODE, false);
+    }
+
+    private void updateNightMode() {
+        boolean nightMode = getNightModeFromSharedPrefs();
+        int mode = nightMode ? AppCompatDelegate.MODE_NIGHT_YES : AppCompatDelegate.MODE_NIGHT_NO;
+        if (BuildConfig.DEBUG) { LOG_V("setDefaultNightMode(" + mode + ")"); }
+        AppCompatDelegate.setDefaultNightMode(mode);
     }
 
     private void configureDownload(String episode, final EpisodeDownloadTask.Destination destination) {
@@ -652,10 +688,29 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         final long freeSpaceMb = (freeSpaceAtDir != -1 ? freeSpaceAtDir : Long.MAX_VALUE) / BYTES_PER_MB;
         final long averageMbPerEpisode = getResources().getInteger(R.integer.average_episode_size_mb);
         warningToast = null;
+        boolean[] checkedItems = null;
+        // Cancel the download 5 times in 10 seconds, and you get all checked
+        if (downloadCancelTimes.size() == TIMES_TO_CANCEL_FOR_ALL
+                && downloadCancelTimes.last() - downloadCancelTimes.first() < 10 * 1000) {
+            long neededMb = namesToShow.size() * averageMbPerEpisode + spaceBufferMb;
+            if (neededMb < freeSpaceMb) {
+                warningToast = Toast.makeText(activity, "EXPERIMENTAL: total download", Toast.LENGTH_LONG);
+                warningToast.show();
+                checkedItems = new boolean[namesToShow.size()];
+                for (int i = 0; i < checkedItems.length; i++) {
+                    checkedItems[i] = true;
+                    episodesToDownload.add(indexesOfNamesToShow.get(i));
+                }
+            } else {
+                warningToast = Toast.makeText(activity, "Potrebno " + neededMb / 1000 + "G, imate " + freeSpaceMb / 1000 + "G", Toast.LENGTH_LONG);
+                warningToast.show();
+            }
+            downloadCancelTimes.clear();
+        }
         configureDownloadDialog = new AlertDialog.Builder(this)
                 .setCancelable(true)
                 .setTitle(DOWNLOAD_DIALOG_TITLE)
-                .setMultiChoiceItems(namesToShow.toArray(new String[0]), null, new DialogInterface.OnMultiChoiceClickListener() {
+                .setMultiChoiceItems(namesToShow.toArray(new String[0]), checkedItems, new DialogInterface.OnMultiChoiceClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i, boolean checked) {
                         Integer actualIndex = indexesOfNamesToShow.get(i);
@@ -695,7 +750,15 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         }
                     }
                 })
-                .setNegativeButton(android.R.string.cancel, null)
+                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        downloadCancelTimes.add(System.currentTimeMillis());
+                        if (downloadCancelTimes.size() > TIMES_TO_CANCEL_FOR_ALL) {
+                            downloadCancelTimes.remove(downloadCancelTimes.first());
+                        }
+                    }
+                })
                 .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int which) {
@@ -783,7 +846,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         return !connected;
     }
 
-    class EpisodeInfo {
+    static class EpisodeInfo {
         String title;
         String number;
         int index;
