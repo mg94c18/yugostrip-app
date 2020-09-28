@@ -69,7 +69,6 @@ import java.util.List;
 import java.util.ListIterator;
 import java.util.Locale;
 import java.util.Map;
-import java.util.TreeSet;
 
 public class MainActivity extends AppCompatActivity implements AdapterView.OnItemClickListener {
     private static final long MAX_DOWNLOADED_IMAGES_ONLINE = 20;
@@ -102,8 +101,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     EpisodeDownloadTask downloadTask;
     AlertDialog pagePickerDialog;
     AlertDialog configureDownloadDialog;
-    TreeSet<Long> downloadCancelTimes = new TreeSet<>();
-    int TIMES_TO_CANCEL_FOR_ALL = 5;
     AlertDialog quoteDialog;
     static long syncIndex;
     ActionBarDrawerToggle drawerToggle;
@@ -688,29 +685,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         final long freeSpaceMb = (freeSpaceAtDir != -1 ? freeSpaceAtDir : Long.MAX_VALUE) / BYTES_PER_MB;
         final long averageMbPerEpisode = getResources().getInteger(R.integer.average_episode_size_mb);
         warningToast = null;
-        boolean[] checkedItems = null;
-        // Cancel the download 5 times in 10 seconds, and you get all checked
-        if (downloadCancelTimes.size() == TIMES_TO_CANCEL_FOR_ALL
-                && downloadCancelTimes.last() - downloadCancelTimes.first() < 10 * 1000) {
-            long neededMb = namesToShow.size() * averageMbPerEpisode + spaceBufferMb;
-            if (neededMb < freeSpaceMb) {
-                warningToast = Toast.makeText(activity, "EXPERIMENTAL: total download", Toast.LENGTH_LONG);
-                warningToast.show();
-                checkedItems = new boolean[namesToShow.size()];
-                for (int i = 0; i < checkedItems.length; i++) {
-                    checkedItems[i] = true;
-                    episodesToDownload.add(indexesOfNamesToShow.get(i));
-                }
-            } else {
-                warningToast = Toast.makeText(activity, "Potrebno " + neededMb / 1000 + "G, imate " + freeSpaceMb / 1000 + "G", Toast.LENGTH_LONG);
-                warningToast.show();
-            }
-            downloadCancelTimes.clear();
-        }
         configureDownloadDialog = new AlertDialog.Builder(this)
                 .setCancelable(true)
                 .setTitle(DOWNLOAD_DIALOG_TITLE)
-                .setMultiChoiceItems(namesToShow.toArray(new String[0]), checkedItems, new DialogInterface.OnMultiChoiceClickListener() {
+                .setMultiChoiceItems(namesToShow.toArray(new String[0]), null, new DialogInterface.OnMultiChoiceClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i, boolean checked) {
                         Integer actualIndex = indexesOfNamesToShow.get(i);
@@ -750,15 +728,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         }
                     }
                 })
-                .setNegativeButton(android.R.string.cancel, new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialogInterface, int i) {
-                        downloadCancelTimes.add(System.currentTimeMillis());
-                        if (downloadCancelTimes.size() > TIMES_TO_CANCEL_FOR_ALL) {
-                            downloadCancelTimes.remove(downloadCancelTimes.first());
-                        }
-                    }
-                })
+                .setNegativeButton(android.R.string.cancel, null)
                 .setPositiveButton(android.R.string.ok, new DialogInterface.OnClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int which) {

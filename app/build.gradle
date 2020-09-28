@@ -6,8 +6,8 @@ android {
         applicationId 'org.mg94c18'
         minSdkVersion 15
         targetSdkVersion 29
-        versionCode 31415926
-        versionName "3.1415926" // Kada menjam ovo, treba da promenim i apk_assets_time!
+        versionCode 31415927
+        versionName "3.1415927" // Kada menjam ovo, treba da promenim i apk_assets_time!
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
