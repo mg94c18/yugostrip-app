@@ -1,12 +1,14 @@
 FEEDBACK:
 * Omiljene epizode (jedan)
 * Full Screen (nekoliko)
+* ako neko ode na drugi strip pa se vrati na prvi, da ne krene od početka
 
 TODO:
 * ? Ako "Idi na stranu" dobije veliki broj, a strip je N_b, uzeti u obzir N_a
 * ? Kada detektuje da nema interneta, treba da se pojavi opcija gde mogu da se vide prethodno sačuvane epizode
 * ? Nađi -> "grešku" da prikazuje poslednju grešku tako da korisnici mogu da pošalju screenshot
 * ? Lint za performClick() za accessibility
+* MM 101_102_b: strane 8 i 25 su iste
 
 UPDATES:
 cat updates.gz | gunzip - | tr -d '\r' | sed -E 's/([^\ ]+)\ +([^\ ]+)\ +([^\ ]+)$/wget -O assets\/\1 "\3"/' > script

@@ -1,0 +1,13 @@
+[6-7269000030844] Appeal Content, 9/30/2020
+
+I am not sure why the update got rejected; the app has been on Play store for more than a year, and I made no changes other than adding a new feature for Dark Mode and fixed couple of bugs.
+
+I would like if you can tell me what exactly is problem and I will address it.
+
+I checked Developer Policy Center and especially reviewed https://support.google.com/googleplay/android-developer/answer/9888072 in detail.
+
+There is "Unauthorized Use of Copyrighted Content" section, and I am assuming that my app is fine because my app store description is the same as it was before, and my app doesn't contain any copyrighted content inside itself.
+
+There is also "Encouraging Infringement of Copyright" section.  My app is an online comic book reader; it does allow users to access online content that may be copyrighted (like Youtube).  But note that my app doesn't advertise downloading the content and it's greatly limited.
+
+Overall since Notification doesn't have details I would like to know what to fix.
