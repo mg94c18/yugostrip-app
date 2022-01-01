@@ -18,6 +18,7 @@ import org.mg94c18.alanford.AssetLoader;
 import org.mg94c18.alanford.BuildConfig;
 import org.mg94c18.alanford.DownloadAndSave;
 import org.mg94c18.alanford.EpisodeDownloadTask;
+import org.mg94c18.alanford.EpisodeIdMigration;
 import org.mg94c18.alanford.ExternalStorageHelper;
 import org.mg94c18.alanford.MainActivity;
 
@@ -368,11 +369,21 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
 
         LinkedHashMap<String, Long> completelyDownloadedEpisodes = EpisodeDownloadTask.getCompletelyDownloadedEpisodes(downloadDir);
         List<String> episodesToDelete = new ArrayList<>();
+        Map<String, String> migrationMap = EpisodeIdMigration.getMigrationMap();
         for (Map.Entry<String, Long> entry : completelyDownloadedEpisodes.entrySet()) {
             String episodeId = entry.getKey();
             if (entry.getValue() >= System.currentTimeMillis() - 1000 * SECONDS_PER_DAY) {
                 if (BuildConfig.DEBUG) { LOG_V("Episode " + episodeId + " is fresh, skipping it"); }
                 continue;
+            }
+            String newEpisodeId = migrationMap.get(episodeId);
+            if (newEpisodeId != null) {
+                if (EpisodeDownloadTask.migrateDownloadedEpisode(downloadDir, episodeId, newEpisodeId)) {
+                    Log.i(TAG, "Migrated downloaded episode " + episodeId + " to " + newEpisodeId);
+                    episodeId = newEpisodeId;
+                } else {
+                    Log.wtf(TAG, "Couldn't migrate " + episodeId + " to " + newEpisodeId);
+                }
             }
             File[] downloadedPages = downloadedPagesForEpisode(downloadDir, episodeId);
             if (downloadedPages == null) {
@@ -380,7 +391,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
                 continue;
             }
             List<String> assetPages = AssetLoader.loadFromAssetOrUpdate(context, episodeId, syncIndex);
-
+            // TODO: != umesto <
             if (downloadedPages.length < assetPages.size()) {
                 if (BuildConfig.DEBUG) {
                     LOG_V("Episode " + episodeId + " downloaded long ago (" + entry.getValue() + ") and not complete, mark for deletion");

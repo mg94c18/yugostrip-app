@@ -415,4 +415,18 @@ public class EpisodeDownloadTask {
         }
         return completelyDownloadedEpisodes;
     }
+
+    public static boolean migrateDownloadedEpisode(File destinationDir, String episodeId, String newEpisodeId) {
+        File completedDir = new File(destinationDir, DOWNLOADED_MARK_FOLDER);
+        File oldEpisodeMark = new File(completedDir, episodeId + DOWNLOADED_MARK_SUFFIX);
+        File newEpisodeMark = new File(completedDir, newEpisodeId + DOWNLOADED_MARK_SUFFIX);
+        File oldEpisodeDir = new File(destinationDir, episodeId);
+        File newEpisodeDir = new File(destinationDir, newEpisodeId);
+        if (!oldEpisodeMark.exists() || !oldEpisodeDir.exists()) {
+            Log.wtf(TAG, "Can't migrate episode " + episodeId + " because the file/dir is not there");
+            return false;
+        }
+        // TODO: onCreateView(126_proba_088.jpg) ne radi; da li preimenujem i fajlove?
+        return oldEpisodeMark.renameTo(newEpisodeMark) && oldEpisodeDir.renameTo(newEpisodeDir);
+    }
 }

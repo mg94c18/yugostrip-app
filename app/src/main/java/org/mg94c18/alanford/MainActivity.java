@@ -76,6 +76,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static final String EPISODE_TITLE = "episode_title";
     private static final String EPISODE_NUMBER = "episode_number";
     private static final String EPISODE_INDEX = "episode";
+    private static final String MIGRATION_ID = "migration_id";
     private static final String DRAWER = "drawer";
     private static final String CURRENT_PAGE_EPISODE = "current_page_episode";
     private static final String CURRENT_PAGE = "current_page";
@@ -136,7 +137,20 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
 
     public SharedPreferences getSharedPreferences() {
-        return getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences prefs = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+        if (!prefs.contains(MIGRATION_ID)) {
+            String episodeId = prefs.getString(EPISODE_NUMBER, null);
+            if (episodeId != null) {
+                Map<String, String> migrationMap = EpisodeIdMigration.getMigrationMap();
+                String newValue = migrationMap.get(episodeId);
+                if (newValue != null) {
+                    prefs.edit().putString(EPISODE_NUMBER, newValue).apply();
+                    Log.i(TAG, "Migrated from " + episodeId + " to " + newValue);
+                }
+            }
+            prefs.edit().putInt(MIGRATION_ID, 1).apply();
+        }
+        return prefs;
     }
 
     /**
@@ -590,6 +604,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 return true;
             case R.id.go_to_page:
                 final EditText input = new EditText(this);
+                input.setText(String.valueOf(viewPager.getCurrentItem() + 2));
                 input.setOnEditorActionListener(
                         new TextView.OnEditorActionListener() {
                             @Override
@@ -793,7 +808,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
 
     private void saveCurrentPage(int currentPage) {
         if (BuildConfig.DEBUG) { LOG_V("Saving currentPage=" + currentPage); }
-        SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+        SharedPreferences preferences = getSharedPreferences();
         preferences.edit().putInt(CURRENT_PAGE, currentPage).putInt(CURRENT_PAGE_EPISODE, selectedEpisode).apply();
     }
 
@@ -837,7 +852,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             episodeInfo.number = state.getString(EPISODE_NUMBER);
             if (BuildConfig.DEBUG) { LOG_V("Loaded episode from bundle: " + episodeInfo); }
         } else {
-            SharedPreferences preferences = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+            SharedPreferences preferences = getSharedPreferences();
             episodeInfo.migration = false;
             String defaultTitle = getResources().getString(R.string.default_episode_title);
             String defaultNumber = getResources().getString(R.string.default_episode_number);
@@ -889,7 +904,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if (position >= 0) {
             selectedEpisode = position;
             if (BuildConfig.DEBUG) { LOG_V("Saving episode " + selectedEpisode); }
-            getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE).edit()
+            getSharedPreferences().edit()
                     .putInt(EPISODE_INDEX, selectedEpisode)
                     .putString(EPISODE_TITLE, title)
                     .putString(EPISODE_NUMBER, number)

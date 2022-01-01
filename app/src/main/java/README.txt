@@ -2,13 +2,41 @@ FEEDBACK:
 * Omiljene epizode (jedan)
 * Full Screen (nekoliko)
 * ako neko ode na drugi strip pa se vrati na prvi, da ne krene od početka
+* Izgleda da sam nekom obećao Full Screen u review feedback :)
 
 TODO:
-* ? Ako "Idi na stranu" dobije veliki broj, a strip je N_b, uzeti u obzir N_a
+* Horizontalno čitanje za krupniju sliku, tako što se AF iseče na pola.  Ne radi za MM.
+
 * ? Kada detektuje da nema interneta, treba da se pojavi opcija gde mogu da se vide prethodno sačuvane epizode
 * ? Nađi -> "grešku" da prikazuje poslednju grešku tako da korisnici mogu da pošalju screenshot
 * ? Lint za performClick() za accessibility
-* MM 101_102_b: strane 8 i 25 su iste
+* SearchProvider tretira 'dates' asset kao case-sensitive a bilo bi lepo da nije
+
+MM mess:
+* 127bis "L'ultimo mistero" fali: https://striputopija.blogspot.com/2018/01/127.html
+* 131bis "Space Shuttle" fali: https://striputopija.blogspot.com/2018/01/131.html
+* 139bis "Il ritorno di Jaspar" fali, i nemam link.
+
+* Ako ne nađe sačuvanu stranu ili broj, da ne crash-uje i da ne prikaže prazno, već da učita default ili možda migracija
+* Migracija zahteva i preimenovanje svih fajlova.  Možda bolje promeniti ID-ove samo na UI nivou
+* Full Screen obećao
+
+MM reference:
+* MM 63 strana 158 nije dobro skenirana
+* MM 45/page127 pominje MM LMS 46/47
+* MM 79 pominje MM LMS 40/41
+16 MM 20. Tothova knjiga
+18 MM 47/48 Tajna velike ?
+Orig MM SP3 Čovek iz Atlan?
+* Dodati "Rječnik misterija" (5. broj specijalnih izdanja)
+* https://www.sergiobonelli.it/sezioni/13/martin-mystere ima brojeve epizoda drugačije; pospremiti ovo
+* https://www.goodreads.com/series/59802 ima pak drugačije
+
+Testiranje za updates (2^4 ima 16 slučajeva)
+A: čitao staru epizodu (pre 100, jednu on onih 23_24_b) vs. čitao novu
+B: otvaranje aplikacije pre sync vs. posle sync
+C: sledeći sync tokom čitanja vs. posle čitanja
+D: stao na nekoj strani koje više nema
 
 UPDATES:
 cat updates.gz | gunzip - | tr -d '\r' | sed -E 's/([^\ ]+)\ +([^\ ]+)\ +([^\ ]+)$/wget -O assets\/\1 "\3"/' > script
