@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 26
+    compileSdkVersion 30
     defaultConfig {
         applicationId 'org.mg94c18'
         minSdkVersion 15
-        targetSdkVersion 29
-        versionCode 31415927
-        versionName "3.1415927" // Kada menjam ovo, treba da promenim i apk_assets_time!
+        targetSdkVersion 30
+        versionCode 314159265
+        versionName "3.14159265" // Kada menjam ovo, treba da promenim i apk_assets_time!
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -25,6 +25,58 @@ android {
         alanFord {
             dimension "strip"
             applicationIdSuffix ".alanford"
+        }
+        strip82 {
+            dimension "strip"
+            applicationIdSuffix ".strip82"
+        }
+        zagor {
+            dimension "strip"
+            applicationIdSuffix ".zagor"
+        }
+        nathanNever {
+            dimension "strip"
+            applicationIdSuffix ".nathannever"
+        }
+        druzinaOdVjesala {
+            dimension "strip"
+            applicationIdSuffix ".druzinaodvjesala"
+        }
+        komandantMark {
+            dimension "strip"
+            applicationIdSuffix ".komandantmark"
+        }
+        ninja {
+            dimension "strip"
+            applicationIdSuffix ".ninja"
+        }
+        asterix {
+            dimension "strip"
+            applicationIdSuffix ".asterix"
+        }
+        misterNo {
+            dimension "strip"
+            applicationIdSuffix ".misterno"
+        }
+        dylanDog {
+            dimension "strip"
+            applicationIdSuffix ".dylandog"
+        }
+        texWiller {
+            dimension "strip"
+            applicationIdSuffix ".texwiller"
+        }
+        talicniTom {
+            dimension "strip"
+            applicationIdSuffix ".talicnitom"
+        }
+        blek {
+            dimension "strip"
+            applicationIdSuffix ".blek"
+        }
+        otkriceSveta {
+            dimension "strip"
+            applicationIdSuffix ".otkricesveta"
         }
     }
 }

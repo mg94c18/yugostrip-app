@@ -442,7 +442,7 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         for (String hiddenNumber : hiddenNumbers) {
             List<String> messages = AssetLoader.loadFromAssetOrUpdate(context, hiddenNumber, syncIndex);
             if (messages.isEmpty()) {
-                if (BuildConfig.DEBUG) { LOG_V("Empty messages for hiddenNumber " + hiddenNumber); }
+                Log.wtf(TAG, "Empty messages for hiddenNumber " + hiddenNumber);
                 return false;
             }
         }
@@ -464,12 +464,12 @@ public class SyncAdapter extends AbstractThreadedSyncAdapter {
         for (String number : numbers) {
             List<String> pages = AssetLoader.loadFromAssetOrUpdate(context, number, syncIndex);
             if (pages.isEmpty()) {
-                if (BuildConfig.DEBUG) { LOG_V("Empty pages for number " + number); }
+                Log.wtf(TAG, "Empty pages for number " + number);
                 return false;
             }
             for (String page : pages) {
                 if (!URLUtil.isValidUrl(page)) {
-                    if (BuildConfig.DEBUG) { LOG_V("Invalid page for " + number + ": " + page); }
+                    Log.wtf(TAG, "Invalid page for " + number + ": " + page);
                     return false;
                 }
             }

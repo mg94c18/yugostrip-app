@@ -29,7 +29,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.widget.AppCompatImageView;
+import android.text.Editable;
 import android.text.InputType;
+import android.text.Selection;
 import android.util.Log;
 import android.util.Pair;
 import android.view.KeyEvent;
@@ -604,7 +606,8 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 return true;
             case R.id.go_to_page:
                 final EditText input = new EditText(this);
-                input.setText(String.valueOf(viewPager.getCurrentItem() + 2));
+                String content = String.valueOf(viewPager.getCurrentItem() + 2);
+                input.setText(content);
                 input.setOnEditorActionListener(
                         new TextView.OnEditorActionListener() {
                             @Override
@@ -619,6 +622,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                         });
                 dismissAlertDialogs();
                 input.setInputType(InputType.TYPE_CLASS_NUMBER);
+                input.setSelection(input.length());
                 pagePickerDialog = new AlertDialog.Builder(this)
                         .setCancelable(true)
                         .setMessage("Unesite broj strane:")
@@ -700,10 +704,16 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         final long freeSpaceMb = (freeSpaceAtDir != -1 ? freeSpaceAtDir : Long.MAX_VALUE) / BYTES_PER_MB;
         final long averageMbPerEpisode = getResources().getInteger(R.integer.average_episode_size_mb);
         warningToast = null;
+        // boolean[] checkedItems = new boolean[namesToShow.size()];
+        // for (int i = 0; i < checkedItems.length; i++) {
+        //     checkedItems[i] = true;
+        //     episodesToDownload.add(indexesOfNamesToShow.get(i));
+        // }
+        boolean[] checkedItems = null;
         configureDownloadDialog = new AlertDialog.Builder(this)
                 .setCancelable(true)
                 .setTitle(DOWNLOAD_DIALOG_TITLE)
-                .setMultiChoiceItems(namesToShow.toArray(new String[0]), null, new DialogInterface.OnMultiChoiceClickListener() {
+                .setMultiChoiceItems(namesToShow.toArray(new String[0]), checkedItems, new DialogInterface.OnMultiChoiceClickListener() {
                     @Override
                     public void onClick(DialogInterface dialogInterface, int i, boolean checked) {
                         Integer actualIndex = indexesOfNamesToShow.get(i);

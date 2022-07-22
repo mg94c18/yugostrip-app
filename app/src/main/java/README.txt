@@ -20,6 +20,9 @@ MM mess:
 * Ako ne nađe sačuvanu stranu ili broj, da ne crash-uje i da ne prikaže prazno, već da učita default ili možda migracija
 * Migracija zahteva i preimenovanje svih fajlova.  Možda bolje promeniti ID-ove samo na UI nivou
 * Full Screen obećao
+* Ako nema zoom, podesiti da bude ceo vidljivi deo, ili barem cela slika?
+
+obrisati slike koje daju 404
 
 MM reference:
 * MM 63 strana 158 nije dobro skenirana

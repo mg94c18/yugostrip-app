@@ -300,10 +300,10 @@ public class EpisodeDownloadTask {
             final String toastText;
             if (success) {
                 toastText = "Download (" + episodeIds.size() + ") uspeo :)";
-                completed = true;
             } else {
                 toastText = "Nažalost, nije uspelo :(";
             }
+            completed = true;
             Toast.makeText(activity, toastText, Toast.LENGTH_LONG).show();
         }
         if (executorService != null) {
@@ -320,7 +320,7 @@ public class EpisodeDownloadTask {
             if (success != null && success) {
                 try {
                     for (Future<Boolean> future : activeFutures) {
-                        if (!future.get()) {
+                        if (!future.isCancelled() && !future.get()) {
                             Log.wtf(TAG, "A task didn't complete successfully: " + future, new Throwable());
                         }
                     }

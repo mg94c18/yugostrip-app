@@ -55,6 +55,7 @@ public class DownloadAndSave {
             if (bitmap == null) {
                 return Pair.create(null, Boolean.FALSE);
             }
+            // TODO: nepotrebno konvertovanje? uglavnom pravi veće slike nego original
             fileOutputStream = new FileOutputStream(tempFile);
             Bitmap.CompressFormat compressFormat = link.endsWith(".png") ? Bitmap.CompressFormat.PNG : Bitmap.CompressFormat.JPEG;
             bitmap.compress(compressFormat, 100, fileOutputStream);
@@ -148,7 +149,7 @@ public class DownloadAndSave {
         InputStream inputStream = null;
         FileOutputStream fileOutputStream = null;
         try {
-            if (BuildConfig.DEBUG) { LOG_V(">> saveUrlToFile(" + file.getName() + ")"); }
+            if (BuildConfig.DEBUG) { LOG_V(">> saveUrlToFile(" + url + "," + file.getName() + ")"); }
             Pair<HttpURLConnection, InputStream> readInfo = readUrlWithRedirect(url);
             if (readInfo == null) {
                 // WTF already logged
