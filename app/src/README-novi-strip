@@ -1,0 +1,101 @@
+Skinem linkove na epizode: for d in `cat NOVI`; do cd $d; wget -O index.html `cat link.html`; cd -; done
+Svi su oko 200K: ls -l `find . -name index.html`
+Linkovi na epizode
+    - grubo: for d in `cat NOVI`; do cd $d; cat index.html | grep -E "[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9][0-9_]*" > linkovi.html; cd -; done
+    - bolje: for d in `cat NOVI`; do cd $d; cat index.html | grep -B 100000 1265430718 | sed -e 's/<\/a><br \/><a href/<\/a><br \/>@<a href/g' | tr '@' '\n' | grep -E "[0-9][0-9][0-9][0-9]/[0-9][0-9]/[0-9][0-9][0-9_]*" > linkovi.html; cd -; done
+
+Ručno pregledam sve linkovi.html, koje su grupe epizoda i trimujem ako ima neki korov.
+
+Editujem sve linkove, stavim markere za prvu fazu (0_Begin/0_End) gde su svi regularni brojevi, zatim N_Begin/N_End gde je poslednji N u fajlu N
+
+N je u hexadecimal, da bih skratio grep 0_End koji hvata 10_End u Zagoru
+
+Naslovi: for d in `cat NOVI`; do cd $d; for i in 0; do cat linkovi.html  | grep -A 100000 $i"_Begin" | grep -B 100000 $i"_End" | grep -vE $i"_(Begin|End)" | sed -e 's/.*">//' | sed -e 's/<\/.*//' | grep -E "^[0-9][0-9][0-9]?\.\ " | sed -E 's/[^\.]+\.\ //' > titles.$i; done; cd -; done
+
+Brojevi: for d in `cat NOVI`; do cd $d; for i in 0; do cat linkovi.html  | grep -A 100000 $i"_Begin" | grep -B 100000 $i"_End" | grep -vE $i"_(Begin|End)" | sed -e 's/.*">//' | sed -e 's/<\/.*//' | grep -E "^[0-9][0-9][0-9]?\.\ " | awk '{print $1}' | tr -d '.' > numbers.$i; done; cd -; done
+
+Linkovi za grupu 0: for d in `cat NOVI`; do cd $d; for i in 0; do cat linkovi.html  | grep -A 100000 $i"_Begin" | grep -B 100000 $i"_End" | grep -vE $i"_(Begin|End)" > linkovi.$i; done; cd -; done
+
+Folder za svaki broj: for d in `cat NOVI`; do cd $d; for i in 0; do for n in `cat numbers.$i`; do mkdir $n; done; done; cd -; done
+
+Brisanje podfoldera (ako zatreba): for d in `cat NOVI `; do cd $d; rm -rf `find . -type d | grep -vE "^\.$"`; cd -; done
+
+Svaki broj da ima svoj link u svom folderu: for d in `cat NOVI`; do cd $d; for i in 0; do for n in `cat numbers.$i`; do grep $n"\.\ " linkovi.$i | sed -E 's/.*href="(.*html)".*/\1/' > $n/link.txt; done; done; cd -; done
+
+Sve jedinice: wc -l `find . -name link.txt`
+
+Svaki broj da ima index.html sa linkovima za sve slike: for d in `cat NOVI`; do cd $d; for i in 0; do for n in `cat numbers.$i`; do wget `cat $n/link.txt ` -O $n/index.html; done; done; cd -; done
+
+Za svaki broj, linkovi na slike: for d in `cat NOVI`; do cd $d; for i in 0; do for n in `cat numbers.$i`; do cat $n/index.html | tr ' ' '\n' | grep -A 100000 258Ditati | grep -B 100000 ita.png | grep s1600 | grep -vE "(ita.png)|258Ditati" > $n/pages; done; done; cd -; done
+
+Isto to samo sa linkovima na googledrive (zbog tankih): for d in `cat ostali`; do cd $d; for i in 0; do for n in `cat numbers.$i`; do cat $n/index.html | tr ' ' '\n' | grep -A 100000 258Ditati | grep -B 100000 ita.png | grep -E "(s1600)|(googleusercontent.*=s[1-9][0-9][0-9][0-9])" | grep -vE "(ita.png)|258Ditati" > $n/pages; done; done; cd -; done
+
+-- Nastavak za strip-82 ali extensible
+Provera koliko linkova ima u svakom pages fajlu: wc -l `find strip-82 -name pages` | sort -n
+
+Isto to za ostale, kad ima mnogo arguments: find `cat ostali` -name pages | xargs -n 1 wc -l | sort -n > ostali.pages
+
+Izdvojim samo one koji imaju "href": for d in `cat NOVI | grep strip-82`; do cd $d; for i in 0; do for n in `cat numbers.$i`; do grep href $n/pages > $n/X; mv $n/X $n/pages; done; done; cd -; done
+
+Izdvajanje samo linkova: for d in `cat NOVI | grep strip-82`; do cd $d; for i in 0; do for n in `cat numbers.$i`; do cat $n/pages | sed -E 's/^.*\"([^\"]+)\"$/\1/' > $n/pages.links; done; done; cd -; done
+
+Provera da imamo isto linkova kao i linija u pages fajlu:
+wc -l `find strip-82 -name pages` | sort -n > X
+wc -l `find strip-82 -name pages.links` | sed -e 's/\.links//' | sort -n > Y
+ili za mnogo arguments:
+find `cat ostali` -name pages | xargs -n 1 wc -l | sort -n > X
+find `cat ostali` -name pages.links | xargs -n 1 wc -l | sort -n | sed -e 's/.links//' > Y
+diff X Y
+
+Dodajem https ako neka linija počinje sa "//" ili ako ima http: for d in `cat NOVI | grep strip-82`; do cd $d; for i in 0; do for n in `cat numbers.$i`; do cat $n/pages.links | sed -E 's/^\/\//https:\/\//' | sed -e 's/http:/https:/' > $n/pages.links.https; done; done; cd -; done
+
+Treba samo da proverim da svaki link ima "https" deo: for d in `cat NOVI | grep strip-82`; do cd $d; for i in 0; do for n in `cat numbers.$i`; do cat $n/pages.links.https | grep -v https > $n/pages.links.nohttps; done; done; cd -; done
+
+Sve nule: wc -l `find strip-82 -name pages.links.nohttps` | sort -n
+Ili za mnogo arguments: find `cat ostali` -name pages.links.nohttps | xargs -n 1 wc -l | sort -n
+
+Dobar broj strana:
+wc -l `find strip-82 -name pages` | sort -n > X
+wc -l `find strip-82 -name pages.links.https` | sed -E 's/\.links.*//' | sort -n > Y
+find `cat ostali` -name pages | xargs -n 1 wc -l | sort -n > X
+find `cat ostali` -name pages.links.https | xargs -n 1 wc -l | sort -n | sed -e 's/.links.https//' > Y
+diff X Y
+
+Finally, spakujem titles, numbers i sve assets: for d in `cat NOVI | grep strip-82`; do cd $d; export NAME=`cat ../name-map | grep $d | awk '{print $2}'`; for i in 0; do for n in `cat numbers.$i`; do cat $n/pages.links.https | gzip - > ~/Documents/my/src/Workspace/ViewPagerTest/app/src/$NAME/assets/$n; done; cat titles.$i | gzip - > ~/Documents/my/src/Workspace/ViewPagerTest/app/src/$NAME/assets/titles; cat numbers.$i | gzip - > ~/Documents/my/src/Workspace/ViewPagerTest/app/src/$NAME/assets/numbers; done; cd -; done
+
+Proglasim dates za TBD: for d in `cat ostali`; do cd $d; export NAME=`cat ../name-map | grep $d | awk '{print $2}'`; for i in 0; do cat titles.$i | sed -e 's/.*/datum TBD/' | gzip - > ~/Documents/my/src/Workspace/ViewPagerTest/app/src/$NAME/assets/dates; done; cd -; done
+
+Dates za S82 koji je izlazio nedeljno: export D=359812800; for i in {1..95}; do date --date='@'$D'' "+%d. %m. %Y"; export D=$(echo $D + 604800 | bc); done | gzip - > ~/Documents/my/src/Workspace/ViewPagerTest/app/src/strip82/assets/dates
+
+-----
+TODO:
+Neki imaju brojeve a/b/c...
+Neki su iz nekoliko manjih delova, ali ne tako bezveze kao MM
+
+========Zatim========
+Otpakujem novi.zip u app/src/noviStrip
+Editujem Icon.svg
+./update-icons
+Editujem res/values/strings.xml:
+    apk_asset_time: echo $(date "+%s")000
+    %s/alanford/noviStrip/g
+    Podesim prvu epizodu
+
+Editujem res/values/numbers.xml:
+    average_episode_size_mb: "wc -l `find . -name pages.links.https` | grep total | awk '{print $1}'" pa to puta 450K/broj stripova
+    na primer za strip82: echo 4725*0.450/94 | bc daje 22
+
+Dodam flavor u build.gradle
+
+for f in nathanNever druzinaOdVjesala komandantMark ninja asterix misterNo dylanDog texWiller talicniTom blek otrkiceSveta; do cd $f; unzip ../novi.zip; cd -; done
+for f in nathanNever druzinaOdVjesala komandantMark ninja asterix misterNo dylanDog texWiller talicniTom blek otrkiceSveta; do cd $f; ./update-icons; cd -; done
+for f in nathanNever druzinaOdVjesala komandantMark ninja asterix misterNo dylanDog texWiller talicniTom blek otrkiceSveta; do cd $f; cat res/values/strings.xml  | sed -e 's/1602871832000/1649206864000/g' | sed -e 's/alanford/'$(echo $f | tr '[:upper:]' '[:lower:]')'/g' > X; mv X res/values/strings.xml; cd -; done
+
+Tu sam negde video da otrkiceSveta treba da bude otkriceSveta.
+
+U ~/SU update-ovao name-map pa onda:
+for f in nathan-never druzina-od-vjesala komandant-mark ninja asterix mister-no dylan-dog tex-willer talicni-tom blek otrkice-sveta; do cd $f; export NAME=`cat ../name-map | grep $f | awk '{print $2}'`; cat ~/Documents/my/src/Workspace/ViewPagerTest/app/src/$NAME/res/values/strings.xml | sed -e s'/otrkice/otkrice/g' | sed -e 's/Grupa TNT/'"$(head -n 1 titles.0)"'/g' | sed -e 's/>1</>'"$(head -n 1 numbers.0)"'</g' > X; mv X ~/Documents/my/src/Workspace/ViewPagerTest/app/src/$NAME/res/values/strings.xml; cd -; done
+
+Za average_episode_size_mb:
+cat app/build.gradle | grep -B 1 'dimension "strip"' | grep -v dimension | awk '{print $1}' | grep -v -- \-\- > flavors
+for f in `cat flavors`; do echo -n "$f, "; cat app/src/$f/assets/titles | gunzip - | wc -l; done > episode_sizes.csv
