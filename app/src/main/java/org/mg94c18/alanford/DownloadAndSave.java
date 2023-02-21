@@ -1,6 +1,7 @@
 package org.mg94c18.alanford;
 
 import android.graphics.Bitmap;
+import android.os.Build;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.util.Log;
@@ -14,11 +15,23 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
+import java.net.InetAddress;
+import java.net.Socket;
 import java.net.URL;
+import java.net.URLConnection;
+import java.net.UnknownHostException;
+import java.security.KeyManagementException;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
 import java.util.zip.GZIPOutputStream;
+
+import javax.net.ssl.HttpsURLConnection;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.SSLSocketFactory;
 
 import static org.mg94c18.alanford.Logger.LOG_V;
 import static org.mg94c18.alanford.Logger.TAG;
@@ -37,6 +50,89 @@ public class DownloadAndSave {
         return null;
     }
 
+    private static SSLContext tlsEnablingSslContext = null;
+    private static SSLSocketFactory tlsEnablingFactory = null;
+    private static synchronized SSLSocketFactory getTlsEnablingFactory(String version) throws NoSuchAlgorithmException, KeyManagementException {
+        if (tlsEnablingFactory == null) {
+            tlsEnablingSslContext = SSLContext.getInstance(version);
+            tlsEnablingSslContext.init(null, null, new SecureRandom());
+            tlsEnablingFactory = new MySocketFactory(tlsEnablingSslContext, version);
+        }
+        return tlsEnablingFactory;
+    }
+
+    private static class MySocketFactory extends SSLSocketFactory {
+        private String[] protocols = new String[1];
+
+        public MySocketFactory(SSLContext context, String protocol) {
+            this.factory = context.getSocketFactory();
+            this.protocols[0] = protocol;
+        }
+
+        private SSLSocketFactory factory;
+
+        @Override
+        public String[] getDefaultCipherSuites() {
+            return factory.getDefaultCipherSuites();
+        }
+
+        @Override
+        public String[] getSupportedCipherSuites() {
+            return factory.getSupportedCipherSuites();
+        }
+
+        @Override
+        public Socket createSocket(Socket socket, String host, int port, boolean autoClose) throws IOException {
+            return enableProtocolOnSocket(factory.createSocket(socket, host, port, autoClose));
+        }
+
+        @Override
+        public Socket createSocket(String host, int port) throws IOException, UnknownHostException {
+            return enableProtocolOnSocket(factory.createSocket(host, port));
+        }
+
+        @Override
+        public Socket createSocket(String host, int port, InetAddress localHost, int localPort) throws IOException, UnknownHostException {
+            return enableProtocolOnSocket(factory.createSocket(host, port, localHost, localPort));
+        }
+
+        @Override
+        public Socket createSocket(InetAddress host, int port) throws IOException {
+            return enableProtocolOnSocket(factory.createSocket(host, port));
+        }
+
+        @Override
+        public Socket createSocket(InetAddress host, int port, InetAddress localHost, int localPort) throws IOException {
+            return enableProtocolOnSocket(factory.createSocket(host, port, localHost, localPort));
+        }
+
+        private Socket enableProtocolOnSocket(Socket s) {
+            if (s instanceof SSLSocket) {
+                ((SSLSocket) s).setEnabledProtocols(protocols);
+            }
+            return s;
+        }
+    }
+
+    private static void tryEnablingTls(HttpsURLConnection connection, String version) {
+        try {
+            connection.setSSLSocketFactory(getTlsEnablingFactory(version));
+            Log.i(TAG, "tryEnablingTls(" + version + ") worked");
+        } catch (NoSuchAlgorithmException | KeyManagementException e) {
+            Log.wtf(TAG, "tryEnablingTls(" + version + ") failed", e);
+        }
+    }
+
+    private static HttpURLConnection openConnection(String link) throws IOException {
+        // Server enforces TLS1.2, which is available in 16+ (https://developer.android.com/reference/javax/net/ssl/SSLContext)
+        URLConnection connection = new URL(link).openConnection();
+
+        if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+            tryEnablingTls((HttpsURLConnection) connection, "TLSv1.2");
+        }
+        return (HttpURLConnection) connection;
+    }
+
     private static @NonNull Pair<Bitmap, Boolean> downloadAndSaveNoRetry(String link, File imageFile, int width, int height) {
         HttpURLConnection connection = null;
         InputStream inputStream = null;
@@ -44,7 +140,7 @@ public class DownloadAndSave {
         File tempFile = new File(imageFile.getAbsolutePath() + TMP_SUFFIX);
         try {
             if (BuildConfig.DEBUG) { LOG_V(">> downloadAndSave(" + imageFile.getName() + ")"); }
-            connection = (HttpURLConnection) new URL(link).openConnection();
+            connection = openConnection(link);
             connection.connect();
             inputStream = connection.getInputStream();
             Bitmap bitmap = GoogleBitmapHelper.decodeSampledBitmapFromStream(
@@ -93,7 +189,7 @@ public class DownloadAndSave {
         HttpURLConnection connection = null;
         InputStream inputStream = null;
         try {
-            connection = (HttpURLConnection) new URL(url).openConnection();
+            connection = openConnection(url);
             connection.connect(); // when changing this, change the below connection.connect() too
             inputStream = new BufferedInputStream(connection.getInputStream());
             byte[] httpHeader = "HTTP/".getBytes("UTF-8");
@@ -123,7 +219,7 @@ public class DownloadAndSave {
                             if (BuildConfig.DEBUG) { LOG_V("Found Location: " + url); }
                             connection.disconnect();
                             IOUtils.closeQuietly(inputStream);
-                            connection = (HttpURLConnection) new URL(url).openConnection();
+                            connection = openConnection(url);
                             connection.connect();
                             inputStream = new BufferedInputStream(connection.getInputStream());
                             break;
