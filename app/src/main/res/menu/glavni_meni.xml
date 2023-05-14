@@ -23,6 +23,14 @@
         android:title="@string/otkazi_download"
         app:showAsAction="never"
         android:visible="false"/>
+    <item android:id="@+id/action_auto_zoom_on"
+        android:title="Auto zoom ON"
+        app:showAsAction="never"
+        android:visible="false"/>
+    <item android:id="@+id/action_auto_zoom_off"
+        android:title="Auto zoom OFF"
+        app:showAsAction="never"
+        android:visible="false"/>
     <item android:id="@+id/action_review"
         app:showAsAction="never"
         android:title="@string/play_intent_title" />

@@ -2,10 +2,16 @@ FEEDBACK:
 * Omiljene epizode (jedan)
 * Full Screen (nekoliko)
 * ako neko ode na drugi strip pa se vrati na prvi, da ne krene od početka
-* Izgleda da sam nekom obećao Full Screen u review feedback :)
+* Izgleda da sam nekom obećao Full Screen u review feedback :(
 
 TODO:
-* Horizontalno čitanje za krupniju sliku, tako što se AF iseče na pola.  Ne radi za MM.
+* Brisanje sinhronizacije jer više nije potrebna
+* Auto zoom
+* Pogledati MaxMagnus - da li su to kratke priče pa mogu da se sakupe od poslednjih strana Alan Forda, ili zasebna kolekcija?
+* Vjesnikova izdanja (CBRs)
+* Hrvatski prevod ako nađem
+* "(dodano 8 str. između 48.-49. po unutrašnjoj numeraciji, koje se ne nalaze u izvornom SS izdanju)" (Ponovo Baby Kate, 9171ytk6dyd1v5x)
+* ? Horizontalno čitanje za krupniju sliku, tako što se AF iseče na pola.  Ne radi za MM.
 
 * ? Kada detektuje da nema interneta, treba da se pojavi opcija gde mogu da se vide prethodno sačuvane epizode
 * ? Nađi -> "grešku" da prikazuje poslednju grešku tako da korisnici mogu da pošalju screenshot

@@ -1,13 +1,13 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 30
+    compileSdkVersion 33
     defaultConfig {
         applicationId 'org.mg94c18'
         minSdkVersion 15
-        targetSdkVersion 30
-        versionCode 314159265
-        versionName "3.14159265" // Kada menjam ovo, treba da promenim i apk_assets_time!
+        targetSdkVersion 33
+        versionCode 314159266 // izgleda da je 32-bit integer pa ne ne dopušta više decimala
+        versionName "3.14159266" // Kada menjam ovo, treba da promenim i apk_assets_time!
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
     }
     buildTypes {
@@ -83,6 +83,7 @@ android {
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
+    //noinspection GradleCompatible (actually upselling AndroidX, so let's skip it)
     implementation 'com.android.support:appcompat-v7:26.1.0'
     implementation 'com.android.support.constraint:constraint-layout:1.0.2'
     testImplementation 'junit:junit:4.12'

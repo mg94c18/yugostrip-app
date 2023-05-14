@@ -29,9 +29,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatDelegate;
 import android.support.v7.widget.AppCompatImageView;
-import android.text.Editable;
 import android.text.InputType;
-import android.text.Selection;
 import android.util.Log;
 import android.util.Pair;
 import android.view.KeyEvent;
@@ -55,7 +53,6 @@ import android.widget.SearchView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import org.mg94c18.alanford.sync.SyncAdapter;
 import static org.mg94c18.alanford.Logger.LOG_V;
 import static org.mg94c18.alanford.Logger.TAG;
 
@@ -83,6 +80,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     private static final String CURRENT_PAGE_EPISODE = "current_page_episode";
     private static final String CURRENT_PAGE = "current_page";
     private static final String NIGHT_MODE = "night_mode";
+    private static final String AUTO_ZOOM = "auto_zoom";
     private static final String CONTACT_EMAIL = "yckopo@gmail.com";
     private static final String MY_ACTION_VIEW = BuildConfig.APPLICATION_ID + ".VIEW";
     private static final String INTERNET_PROBLEM = "Internet Problem";
@@ -105,7 +103,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     AlertDialog pagePickerDialog;
     AlertDialog configureDownloadDialog;
     AlertDialog quoteDialog;
-    static long syncIndex;
+    static final long syncIndex = -1;
     ActionBarDrawerToggle drawerToggle;
     Toast warningToast;
     private static final String DOWNLOAD_DIALOG_TITLE = "Download";
@@ -139,7 +137,11 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
     }
 
     public SharedPreferences getSharedPreferences() {
-        SharedPreferences prefs = getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+        return getSharedPreferences(getApplicationContext());
+    }
+
+    public static SharedPreferences getSharedPreferences(@NonNull Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
         if (!prefs.contains(MIGRATION_ID)) {
             String episodeId = prefs.getString(EPISODE_NUMBER, null);
             if (episodeId != null) {
@@ -243,12 +245,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             return false;
         }
 
-        if (SearchProvider.ALLOW_MANUAL_SYNC && epizodeStr.equals("sync")) {
-            if (BuildConfig.DEBUG) { LOG_V("Sync intent"); }
-            SyncAdapter.requestSyncNow(this);
-            return true;
-        }
-
         int episode;
         try {
             episode = Integer.parseInt(epizodeStr);
@@ -277,8 +273,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         super.onCreate(savedInstanceState);
         downloadTask = null;
         setContentView(R.layout.activity_main);
-
-        syncIndex = SyncAdapter.acquireSyncIndex(this);
 
         titles = Collections.emptyList();
         numbers = Collections.emptyList();
@@ -429,8 +423,6 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
         dismissAlertDialogs();
         saveCurrentPage(viewPager.getCurrentItem());
-
-        SyncAdapter.setPeriodicSync(this);
     }
 
     private void dismissAlertDialogs() {
@@ -467,6 +459,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         sdCardReady = (ExternalStorageHelper.getExternalCacheDir(this) != null);
         updateDownloadButtons(menu);
         updateDarkModeButtons(menu);
+        updateAutoZoomButtons(menu);
 
         return super.onCreateOptionsMenu(menu);
     }
@@ -478,6 +471,12 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             menu.findItem(R.id.action_download_internal).setVisible(true);
         }
         menu.findItem(R.id.action_cancel_download).setVisible(false);
+    }
+
+    private void updateAutoZoomButtons(Menu menu) {
+        boolean currentlyEnabled = getAutoZoomFromSharedPrefs(this);
+        menu.findItem(R.id.action_auto_zoom_off).setVisible(currentlyEnabled);
+        menu.findItem(R.id.action_auto_zoom_on).setVisible(!currentlyEnabled);
     }
 
     private void updateDarkModeButtons(Menu menu) {
@@ -647,13 +646,30 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 getSharedPreferences().edit().putBoolean(NIGHT_MODE, newNightMode).apply();
                 recreate();
                 return true;
+            case R.id.action_auto_zoom_on:
+                setAutoZoomEnabled(true);
+                invalidateOptionsMenu();
+                return true;
+            case R.id.action_auto_zoom_off:
+                setAutoZoomEnabled(false);
+                invalidateOptionsMenu();
+                return true;
             default:
                 return super.onOptionsItemSelected(item);
         }
     }
 
+    private void setAutoZoomEnabled(boolean newValue) {
+        getSharedPreferences().edit().putBoolean(AUTO_ZOOM, newValue).apply();
+        MyPagerAdapter.scaleCachedFragments(getApplicationContext());
+    }
+
     private boolean getNightModeFromSharedPrefs() {
         return getSharedPreferences().getBoolean(NIGHT_MODE, false);
+    }
+
+    private static boolean getAutoZoomFromSharedPrefs(@NonNull Context context) {
+        return getSharedPreferences(context).getBoolean(AUTO_ZOOM, true);
     }
 
     private void updateNightMode() {
@@ -952,7 +968,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             FRAGMENTS_FOR_SCALING.add(new WeakReference<>(f));
         }
 
-        private static synchronized void scaleCachedFragments(SharedPreferences preferences) {
+        public static synchronized void scaleCachedFragments(Context context) {
             ListIterator<WeakReference<MyFragment>> iterator = FRAGMENTS_FOR_SCALING.listIterator();
             while (iterator.hasNext()) {
                 WeakReference<MyFragment> elem = iterator.next();
@@ -961,7 +977,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     iterator.remove();
                     continue;
                 }
-                f.updateScaleFromPrefs(preferences);
+                f.updateScaleFromPrefs(context);
             }
         }
 
@@ -1042,7 +1058,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 AppCompatImageView imageView = pageView.findViewById(R.id.imageView);
                 ProgressBar progressBar = pageView.findViewById(R.id.progressBar);
                 imageView.setTag(progressBar);
-                updateScaleFromPrefs(getContext().getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE), imageView);
+                updateScaleFromPrefs(getContext(), imageView);
                 pageView.setOnTouchListener(this);
 
                 loadTask = new MyLoadTask(getContext(), episodeId, link, filename, imageView);
@@ -1054,7 +1070,9 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             @Override
             public boolean onTouch(View view, MotionEvent motionEvent) {
                 if (BuildConfig.DEBUG) { LOG_V("Scaling: onTouch"); }
-                mScaleDetector.onTouchEvent(motionEvent);
+                if (!getAutoZoomFromSharedPrefs(getContext())) {
+                    mScaleDetector.onTouchEvent(motionEvent);
+                }
                 return true;
             }
 
@@ -1081,19 +1099,20 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                     return false;
                 }
 
-                SharedPreferences preferences = getContext().getSharedPreferences(SHARED_PREFS_NAME, MODE_PRIVATE);
+                Context context = getContext();
+                SharedPreferences preferences = getSharedPreferences(context);
                 preferences.edit()
                         .putFloat(getScaleKey(SCALE_X), scaleX)
                         .putFloat(getScaleKey(SCALE_Y), scaleY)
                         .apply();
 
-                updateScaleFromPrefs(preferences, view);
-                scaleCachedFragments(preferences);
+                updateScaleFromPrefs(context, view);
+                scaleCachedFragments(context);
                 return true;
             }
 
-            public void updateScaleFromPrefs(SharedPreferences preferences) {
-                updateScaleFromPrefs(preferences, loadTask != null ? loadTask.getImageView() : null);
+            public void updateScaleFromPrefs(Context context) {
+                updateScaleFromPrefs(context, loadTask != null ? loadTask.getImageView() : null);
             }
 
             private String getScaleKey(String axis) {
@@ -1104,18 +1123,30 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 return key;
             }
 
-            private void updateScaleFromPrefs(SharedPreferences preferences, @Nullable ImageView imageView) {
+            private void updateScaleFromPrefs(Context context, @Nullable ImageView imageView) {
                 if (imageView == null) {
                     return;
                 }
-                mScaleX = preferences.getFloat(getScaleKey(SCALE_X), 1.0f);
-                mScaleY = preferences.getFloat(getScaleKey(SCALE_Y), 1.0f);
-                if (Float.compare(mScaleX, imageView.getScaleX()) == 0 && Float.compare(mScaleY, imageView.getScaleY()) == 0) {
-                    return;
-                }
+                if (getAutoZoomFromSharedPrefs(context)) {
+                    Log.i(TAG, "auto zoom: ON");
+                    imageView.setScaleType(ImageView.ScaleType.FIT_XY);
 
-                imageView.setScaleX(mScaleX);
-                imageView.setScaleY(mScaleY);
+                    imageView.setScaleX(1.0f);
+                    imageView.setScaleY(1.0f);
+                } else {
+                    Log.i(TAG, "auto zoom: OFF");
+                    imageView.setScaleType(ImageView.ScaleType.FIT_CENTER);
+
+                    SharedPreferences preferences = getSharedPreferences(context);
+                    mScaleX = preferences.getFloat(getScaleKey(SCALE_X), 1.0f);
+                    mScaleY = preferences.getFloat(getScaleKey(SCALE_Y), 1.0f);
+                    if (Float.compare(mScaleX, imageView.getScaleX()) == 0 && Float.compare(mScaleY, imageView.getScaleY()) == 0) {
+                        return;
+                    }
+
+                    imageView.setScaleX(mScaleX);
+                    imageView.setScaleY(mScaleY);
+                }
                 imageView.invalidate();
             }
 
@@ -1269,7 +1300,10 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         }
     }
 
-    public static synchronized void deleteOldSavedFiles(File dir, long maxImages) {
+    public static synchronized void deleteOldSavedFiles(@Nullable File dir, long maxImages) {
+        if (dir == null) {
+            return;
+        }
         File[] files = dir.listFiles(new FileFilter() {
             @Override
             public boolean accept(File file) {
