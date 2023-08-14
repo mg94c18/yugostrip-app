@@ -3,6 +3,7 @@
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <item android:id="@+id/action_email"
         android:title="Pitanja i problemi"
+        android:visible="false"
         app:showAsAction="never" />
     <item android:id="@+id/go_to_page"
         android:title="Idi na stranu..."

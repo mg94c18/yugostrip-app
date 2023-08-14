@@ -145,7 +145,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
         if (!prefs.contains(MIGRATION_ID)) {
             String episodeId = prefs.getString(EPISODE_NUMBER, null);
             if (episodeId != null) {
-                Map<String, String> migrationMap = EpisodeIdMigration.getMigrationMap();
+                Map<String, String> migrationMap = Collections.emptyMap(); // EpisodeIdMigration.getMigrationMap();
                 String newValue = migrationMap.get(episodeId);
                 if (newValue != null) {
                     prefs.edit().putString(EPISODE_NUMBER, newValue).apply();
@@ -245,6 +245,13 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
             return false;
         }
 
+        if (AssetLoader.VJESNIK.equals(epizodeStr)) {
+            boolean vjesnik = getSharedPreferences().getBoolean(AssetLoader.VJESNIK, false);
+            getSharedPreferences().edit().putBoolean(AssetLoader.VJESNIK, !vjesnik).apply();
+            recreate();
+            return true;
+        }
+
         int episode;
         try {
             episode = Integer.parseInt(epizodeStr);
@@ -294,7 +301,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 selectedEpisode = episodeInfo.index;
                 updateAssets(
                         AssetLoader.loadFromAssetOrUpdate(this, AssetLoader.TITLES, syncIndex),
-                        AssetLoader.loadFromAssetOrUpdate(this, AssetLoader.NUMBERS, syncIndex),
+                        AssetLoader.loadNumbersFromAssetOrUpdate(this, syncIndex),
                         AssetLoader.loadFromAssetOrUpdate(this, AssetLoader.DATES, syncIndex),
                         AssetLoader.loadFromAssetOrUpdate(this, AssetLoader.HIDDEN_TITLES, syncIndex),
                         AssetLoader.loadFromAssetOrUpdate(this, AssetLoader.HIDDEN_NUMBERS, syncIndex),
@@ -343,7 +350,7 @@ public class MainActivity extends AppCompatActivity implements AdapterView.OnIte
                 }
                 if (BuildConfig.DEBUG) { LOG_V("Begin loading: " + System.currentTimeMillis()); }
                 titles = AssetLoader.loadFromAssetOrUpdate(context, AssetLoader.TITLES, syncIndex);
-                numbers = AssetLoader.loadFromAssetOrUpdate(context, AssetLoader.NUMBERS, syncIndex);
+                numbers = AssetLoader.loadNumbersFromAssetOrUpdate(context, syncIndex);
                 dates = AssetLoader.loadFromAssetOrUpdate(context, AssetLoader.DATES, syncIndex);
                 if (BuildConfig.DEBUG) { LOG_V("End loading: " + System.currentTimeMillis()); }
 

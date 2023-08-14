@@ -107,18 +107,28 @@ public class SearchProvider extends ContentProvider {
         }
 
         if (resultCount == 0) {
-            tryAddingHiddenResults(querySet, cursor);
+            resultCount += tryAddingHiddenResults(querySet, cursor);
+        }
+
+        if (resultCount == 0 && AssetLoader.VJESNIK.equals(query)) {
+            // copy/paste od sync koji više "nije u funkciji"
+            MatrixCursor.RowBuilder builder = cursor.newRow();
+            builder.add(0); // BaseColumns._ID
+            builder.add("Vjesnik epizode"); // SearchManager.SUGGEST_COLUMN_TEXT_1
+            builder.add("ON/OFF"); // SearchManager.SUGGEST_COLUMN_TEXT_2
+            builder.add(query); // SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA
         }
 
         return cursor;
     }
 
-    private void tryAddingHiddenResults(Set<String> querySet, MatrixCursor cursor) {
+    private int tryAddingHiddenResults(Set<String> querySet, MatrixCursor cursor) {
         Context context = getContext();
         if (context == null) {
-            return;
+            return 0;
         }
 
+        int addedCount = 0;
         for (int i = 0; i < HIDDEN_MATCHES.size(); i++) {
             boolean addThis = false;
             for (String query : querySet) {
@@ -133,8 +143,10 @@ public class SearchProvider extends ContentProvider {
                 builder.add(HIDDEN_TITLES.get(i)); // SearchManager.SUGGEST_COLUMN_TEXT_1
                 builder.add(HIDDEN_NUMBERS.get(i)); // SearchManager.SUGGEST_COLUMN_TEXT_2
                 builder.add(Integer.toString(-1 * (i + 1))); // SearchManager.SUGGEST_COLUMN_INTENT_EXTRA_DATA
+                addedCount++;
             }
         }
+        return addedCount;
     }
 
     @Nullable

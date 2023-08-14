@@ -1,6 +1,7 @@
 package org.mg94c18.alanford;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.content.res.AssetManager;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -27,7 +28,8 @@ import static org.mg94c18.alanford.Logger.TAG;
 
 public final class AssetLoader {
     public static final String TITLES = "titles";
-    public static final String NUMBERS = "numbers";
+    private static final String NUMBERS = "numbers";
+    public static final String VJESNIK = "vjesnik";
     public static final String DATES = "dates";
     public static final String HIDDEN_TITLES = "hiddenTitles";
     public static final String HIDDEN_NUMBERS = "hiddenNumbers";
@@ -94,6 +96,23 @@ public final class AssetLoader {
             Log.wtf(TAG, "Can't convert number", nfe);
             return -1;
         }
+    }
+
+    public @NonNull static List<String> loadNumbersFromAssetOrUpdate(final Context context, final long syncIndex) {
+        List<String> numbers = loadFromAssetOrUpdate(context, NUMBERS, syncIndex);
+        SharedPreferences preferences = MainActivity.getSharedPreferences(context);
+        boolean vjesnikEnabled = preferences.getBoolean(VJESNIK, false);
+        if (!vjesnikEnabled) {
+            return numbers;
+        }
+        Set<String> vjesnik = new HashSet<>();
+        vjesnik.addAll(loadFromAssetOrUpdate(context, VJESNIK, syncIndex));
+        for (int i = 0; i < numbers.size(); i++) {
+            if (vjesnik.contains(numbers.get(i))) {
+                numbers.set(i, numbers.get(i) + "v");
+            }
+        }
+        return numbers;
     }
 
     public @NonNull static List<String> loadFromAssetOrUpdate(final Context context, final String assetName, final long syncIndex) {
