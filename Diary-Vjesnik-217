@@ -1,0 +1,28 @@
+s3cmd ls s3://yugostripalanford3/ | grep -v cbr | awk -F\/ '{print $4}' > Vjesnik_217
+
+Proba prebacivanja formata da popunim sve 'v' assets:
+for id in $(cat Vjesnik_217 | tail -n 1); do s3cmd ls s3://yugostripalanford3/${id}/; done > 277_proba
+Treba mi format: https://yugostripalanford3.fra1.digitaloceanspaces.com/062/035.jpg
+Ovo izgleda radi: cat 277_proba  | awk -F\/ '{print "https://yugostripalanford3.fra1.digitaloceanspaces.com/"$4"/"$5""}'
+
+Proba sa nekim koji ima ime a ne samo broj u imenu fajla:
+for id in 258; do s3cmd ls s3://yugostripalanford3/${id}/ | awk -F\/ '{print "https://yugostripalanford3.fra1.digitaloceanspaces.com/"$4"/"$5""}'; done
+Izgleda OK...
+
+Proba za sve ID-ove koje imam:
+for id in $(cat Vjesnik_217); do echo ${id}...; s3cmd ls s3://yugostripalanford3/${id}/ | awk -F\/ '{print "https://yugostripalanford3.fra1.digitaloceanspaces.com/"$4"/"$5""}' | gzip > app/src/alanFord/assets/${id}v; done
+
+Nasumično testiranje nekoliko brojeva pokazuje da su svi linkovi OK.
+Ako raspakujem 001v i uporedim sa 1v, isti su.  gzip verzije nisu iste jer imaju metadata.
+Poređenje svih prethodnih assets sa svojim "novim" verzijama, svi su isti:
+for id in $(cat vjesnik | gunzip); do export id3=$(printf "%03sv" ${id}) && cat ${id}v | gunzip > ${id}v.txt && cat ${id3} | gunzip - > ${id3}.txt && diff ${id}v.txt ${id3}.txt; done;
+Kopiranje novih assets u stare: for id in $(cat vjesnik | gunzip); do export id3=$(printf "%03sv" ${id}) && mv ${id3} ${id}v; done
+Mada, zašto ako su već isti?  git checkout -- $(gs | grep modified | grep -v xml | awk '{print $2}')
+Ima samo 5 ovih što sad počinju sa 0 a da su novi: 042 052 081 085 093
+for id in 42 52 81 85 93; do mv 0${id}v ${id}v; done
+Imam sad 163 novih brojeva, kao što se i očekuje: gs | grep -A 10000 109v | grep -B 10000 93v | wc -l
+Sve 'v' brojeve u vjesnik fajl: ls *v | sort -h | gzip > vjesnik
+Imam 217 ukupno: cat vjesnik | gunzip | wc -l
+Svi fajlovi iz vjesnik master fajla su tu: for id in $(cat vjesnik | gunzip); do ls ${id}; done
+Stavio sve u APK pa na telefon.  Tu ne radi jer vjesnik fajl ne treba da ima 'v', pa kao i ranije samo sklonim 'v': ls *v | sort -h | tr -d 'v' | gzip > vjesnik
+Sad izgleda da sve radi, to jest tih 217 Vjesnik verzija.  I dalje ima to da kada se promeni Vjesnik mod, ne update-uje trenutni strip, ali to nema veze.

@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/ViewPagerTest.iml" filepath="$PROJECT_DIR$/ViewPagerTest.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/ViewPagerTest.iml" filepath="$PROJECT_DIR$/.idea/modules/ViewPagerTest.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/ViewPagerTest.app.iml" filepath="$PROJECT_DIR$/.idea/modules/app/ViewPagerTest.app.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/ViewPagerTest.app.androidTest.iml" filepath="$PROJECT_DIR$/.idea/modules/app/ViewPagerTest.app.androidTest.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/app/ViewPagerTest.app.main.iml" filepath="$PROJECT_DIR$/.idea/modules/app/ViewPagerTest.app.main.iml" />
