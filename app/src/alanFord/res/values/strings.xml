@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="apk_assets_time">1767333256000</string>
+    <string name="apk_assets_time">1770586725000</string>
     <string name="sync_account_type">org.mg94c18.alanford</string>
     <string name="sync_search_suggest_authority">org.mg94c18.alanford.searchprovider</string>
     <string name="sync_search_suggest_intent_action">org.mg94c18.alanford.VIEW</string>
