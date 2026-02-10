@@ -17,6 +17,7 @@
     <!-- TODO: android:layout_width="240dp"? -->
     <ListView
         android:id="@+id/navigation"
+        android:fitsSystemWindows="true"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_gravity="start"
